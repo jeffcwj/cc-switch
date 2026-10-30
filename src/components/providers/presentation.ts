@@ -702,6 +702,8 @@ export interface AdditiveInput {
   piStateUnavailable?: boolean;
   /** Kimi：原生 default_model 别名所属的供应商。 */
   kimiCurrentId?: string | null;
+  /** DSH：设置里指定的 profile，空＝自动（web → desktop） */
+  dshProfile?: string | null;
   /** 「已添加」里列表外另画的卡（DSH 的 DeepSeek 账号卡），计入标题数字 */
   extraAdded?: number;
   actions: {
@@ -967,7 +969,12 @@ export function buildAdditiveSections(input: AdditiveInput): ProviderSection[] {
                 app: t(`apps.${app}`),
               }),
       },
-      note: app === "dsh" ? t("dsh.sharedProvidersNote") : undefined,
+      note:
+        app === "dsh"
+          ? input.dshProfile
+            ? t("dsh.pinnedProvidersNote", { profile: input.dshProfile })
+            : t("dsh.sharedProvidersNote")
+          : undefined,
       emptyText: t("providerCard.section.addedEmpty"),
       items: added,
     },

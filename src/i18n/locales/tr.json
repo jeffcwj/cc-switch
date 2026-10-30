@@ -5099,6 +5099,7 @@
       "description": "Bir uç nokta, API anahtarı ve modeller yapılandırın. Mevcut özel sağlayıcılar burada otomatik olarak görünür."
     },
     "sharedProviders": "Eklenen sağlayıcılar DeepSeek Harness'ın hem Web hem Desktop yapılandırmasına (ve başlatılmış headless, acp profillerine) yazılır; modeli DeepSeek Harness içinde seçin.",
+    "pinnedProvidersNote": "Şu anda yalnızca {{profile}} profili okunuyor; sağlayıcı değiştirmek yine tüm başlatılmış profillere yazar",
     "sharedProvidersNote": "Web ve Desktop ortak kullanır",
     "account": {
       "help": "DeepSeek hesabı tarayıcı üzerinden oturum açar (OAuth); burada veya DeepSeek Harness'ta oturum açabilirsiniz. Oturum $DSH_HOME/.credentials.yaml (varsayılan ~/.dsh/.credentials.yaml) içinde saklanır ve DeepSeek Harness Web ile Desktop tarafından paylaşılır: herhangi bir yerde oturum açmak veya kapatmak ikisine de uygulanır, çalışan DeepSeek Harness dosyayı otomatik olarak yeniden okur. Hesabın modellerinin kullanımı, Kullanım sayfasında ayrıca \"DeepSeek hesabı (OAuth)\" olarak görünür.",

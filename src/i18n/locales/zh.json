@@ -5115,6 +5115,7 @@
       "description": "配置请求地址、API Key 和模型。已有的自定义供应商会自动显示在这里。"
     },
     "sharedProviders": "已添加的供应商会一起写进 DeepSeek Harness 的 Web 和 Desktop 配置（以及已初始化的 headless、acp），在 DeepSeek Harness 里选模型即可。",
+    "pinnedProvidersNote": "当前只读取 {{profile}} 这份配置；切换供应商仍会写进所有已初始化的 profile",
     "sharedProvidersNote": "Web 和 Desktop 共用这份列表",
     "account": {
       "help": "DeepSeek 账号用浏览器登录（OAuth），可以在这里登录，也可以在 DeepSeek Harness 里登录。登录信息保存在 $DSH_HOME/.credentials.yaml（默认 ~/.dsh/.credentials.yaml），DeepSeek Harness 的 Web 和 Desktop 共用：任一处登录或退出，两端同时生效，运行中的 DeepSeek Harness 会自动重新读取。账号路由的模型用量在用量页单独显示为「DeepSeek 账号（OAuth）」。",

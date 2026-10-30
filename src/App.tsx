@@ -1592,6 +1592,7 @@ function App() {
             providers={providers}
             currentProviderId={currentProviderId}
             appId={activeApp}
+            dshProfile={settingsData?.dshProfile}
             isLoading={isLoading}
             onSwitch={(provider) =>
               void (isPiFamilyApp(activeApp)

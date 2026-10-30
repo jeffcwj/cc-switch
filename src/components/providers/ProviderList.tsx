@@ -91,6 +91,8 @@ interface ProviderListProps {
   onSyncTo?: (provider: Provider, target: SyncTargetApp) => void;
   /** 一次把当前应用的全部供应商同步过去 */
   onSyncAll?: (target: SyncTargetApp) => void;
+  /** DSH：设置里指定的 profile，空＝自动（web → desktop） */
+  dshProfile?: string;
   onOpenWebsite: (url: string) => void;
   onOpenTerminal?: (provider: Provider) => void;
   onCreate?: () => void;
@@ -123,6 +125,7 @@ export function ProviderList({
   onConfigureUsage,
   onSyncTo,
   onSyncAll,
+  dshProfile,
   onOpenWebsite,
   onOpenTerminal,
   onCreate,
@@ -389,6 +392,7 @@ export function ProviderList({
       t,
       providers: filteredProviders,
       isInConfig,
+      dshProfile,
       currentOmoId,
       currentOmoSlimId,
       defaultModel:

@@ -618,12 +618,18 @@ pub(crate) fn remove_account_grant() -> Result<Option<(String, String)>, AppErro
 }
 
 /// Providers as shown in CC Switch: every initialized profile ([`read_paths`]), authoritative
-/// profile first, first occurrence of a key winning.
+/// profile first, first occurrence of a key winning. When the user pinned a profile in settings,
+/// only that profile counts — a provider that lives in some other profile would not exist in the
+/// one DeepSeek Harness actually runs, so showing it as "已添加" would be a lie.
 pub(crate) fn get_providers() -> Result<IndexMap<String, Value>, AppError> {
     let credentials = credentials_path();
     let authoritative = config_path();
+    let paths = match pinned_profile() {
+        Some(_) => vec![authoritative.clone()],
+        None => read_paths(),
+    };
     let mut merged: IndexMap<String, Value> = IndexMap::new();
-    for path in read_paths() {
+    for path in paths {
         let providers = match get_providers_from(&path, &credentials) {
             Ok(providers) => providers,
             // 权威 profile 读不出来时照旧报错；其余 profile 只跳过并记日志，别让一个写坏的

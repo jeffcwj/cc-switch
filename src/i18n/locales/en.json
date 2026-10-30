@@ -5115,6 +5115,7 @@
       "description": "Configure an endpoint, API key and models. Existing custom providers appear here automatically."
     },
     "sharedProviders": "Added providers are written into both the Web and Desktop configs of DeepSeek Harness (plus any initialized headless or acp profile); pick the model inside DeepSeek Harness.",
+    "pinnedProvidersNote": "Only the {{profile}} profile is read right now; switching providers still writes to every initialized profile",
     "sharedProvidersNote": "Shared by Web and Desktop",
     "account": {
       "help": "The DeepSeek account signs in through the browser (OAuth), here or in DeepSeek Harness. The sign-in is stored in $DSH_HOME/.credentials.yaml (default ~/.dsh/.credentials.yaml) and shared by DeepSeek Harness Web and Desktop: signing in or out anywhere applies to both, and a running DeepSeek Harness reloads it automatically. Usage of the account's models appears separately on the Usage page as \"DeepSeek account (OAuth)\".",
