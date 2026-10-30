@@ -2106,6 +2106,8 @@
     "nativeCustomProviderRequired": "A new provider ID requires a package and at least one model. Only an existing ID in the live config may inherit defaults.",
     "baseUrl": "Base URL",
     "models": "Models",
+    "refreshModelMetadata": "Refresh model info",
+    "refreshModelMetadataHint": "Match model names against models.dev again to fill context window, modalities and thinking levels",
     "addModel": "Add manually",
     "modelId": "Model ID",
     "modelName": "Display Name",

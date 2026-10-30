@@ -2106,6 +2106,8 @@
     "nativeCustomProviderRequired": "新しいプロバイダー ID には package と少なくとも1つのモデルが必要です。設定に既に存在する同じ ID のプロバイダーのみ既定の定義を継承できます。",
     "baseUrl": "Base URL",
     "models": "モデル設定",
+    "refreshModelMetadata": "モデル情報を更新",
+    "refreshModelMetadataHint": "モデル名を models.dev と照合し、コンテキスト長・モダリティ・思考レベルを補完します",
     "addModel": "手動で追加",
     "modelId": "モデル ID",
     "modelName": "表示名",

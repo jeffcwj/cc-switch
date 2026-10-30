@@ -15,7 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
-import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
+} from "lucide-react";
 import { ApiKeySection, GptContextWindowHint, ModelDropdown } from "./shared";
 import {
   fetchModelsForConfig,
@@ -473,6 +479,20 @@ export function OpenCodeFormFields({
     return true;
   };
 
+  /**
+   * 把整张模型表的参数重新对一遍：模型名去配 models.dev（含同名 / 供应商
+   * canonical 命中），补上下文窗口、输出上限、模态、思考档位。只填空位，
+   * 用户手写过的值不会被盖掉。
+   *
+   * 顺带把端点的模型列表也刷一次，模型 ID 下拉才是最新的。
+   */
+  const refreshAllModelMetadata = () => {
+    const ids = Object.keys(modelsRef.current);
+    if (ids.length === 0) return;
+    if (!isFetchingModels) handleFetchModels();
+    for (const id of ids) fillModelMetadataFor(id);
+  };
+
   const handleApplyFetchedModels = ({ add, remove }: FetchedModelSelection) => {
     const next = { ...models };
     for (const id of remove) delete next[id];
@@ -898,6 +918,21 @@ export function OpenCodeFormFields({
             {t("opencode.models", { defaultValue: "Models" })}
           </FormLabel>
           <div className="flex gap-1">
+            <HoverTip content={t("opencode.refreshModelMetadataHint")}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={refreshAllModelMetadata}
+                disabled={Object.keys(models).length === 0}
+                className="h-7 gap-1"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                {t("opencode.refreshModelMetadata", {
+                  defaultValue: "更新模型信息",
+                })}
+              </Button>
+            </HoverTip>
             <FetchedModelPicker
               models={fetchedModels}
               configuredModelIds={Object.keys(models)}
@@ -984,6 +1019,24 @@ export function OpenCodeFormFields({
                     })}
                     className="flex-1"
                   />
+                  <HoverTip
+                    content={t("opencode.refreshModelMetadata", {
+                      defaultValue: "更新模型信息",
+                    })}
+                  >
+                    <Button
+                      aria-label={t("opencode.refreshModelMetadata", {
+                        defaultValue: "更新模型信息",
+                      })}
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fillModelMetadataFor(key)}
+                      className="h-9 w-9 text-fg-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </HoverTip>
                   <HoverTip content={t("common.delete")}>
                     <Button
                       aria-label={t("common.delete")}

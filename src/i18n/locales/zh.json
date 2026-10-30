@@ -2106,6 +2106,8 @@
     "nativeCustomProviderRequired": "新的供应商标识需要填写 package 和至少一个模型；只有配置中已有的同名供应商可以沿用默认定义",
     "baseUrl": "Base URL",
     "models": "模型配置",
+    "refreshModelMetadata": "更新模型信息",
+    "refreshModelMetadataHint": "按模型名重新匹配 models.dev，补齐窗口、模态和思考档位",
     "addModel": "手动添加",
     "modelId": "模型 ID",
     "modelName": "显示名称",

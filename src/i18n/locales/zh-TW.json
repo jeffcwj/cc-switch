@@ -2107,6 +2107,8 @@
     "nativeCustomProviderRequired": "新的供應商識別碼需要填寫 package 和至少一個模型；只有設定中已有的同名供應商可以沿用預設定義",
     "baseUrl": "Base URL",
     "models": "模型設定",
+    "refreshModelMetadata": "更新模型資訊",
+    "refreshModelMetadataHint": "依模型名稱重新比對 models.dev，補齊視窗、模態與思考檔位",
     "addModel": "手動新增",
     "modelId": "模型 ID",
     "modelName": "顯示名稱",

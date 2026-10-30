@@ -99,6 +99,34 @@ export function fillHermesModel(
   return next;
 }
 
+/** OpenCode 的思考档位键：只认这几档，`none` 由「不写 variant」表达。 */
+const OPENCODE_EFFORT_LEVELS = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+/**
+ * 把 models.dev 的 `reasoning_options`（effort 档位）翻成 OpenCode 的
+ * `variants`。models.dev 用 `none` 表示「关掉思考」，OpenCode 用「没有这个
+ * variant」表示，所以 `none` 要丢掉。
+ */
+function variantsFromEfforts(
+  efforts: readonly string[] | undefined,
+): Record<string, { reasoningEffort: string }> | undefined {
+  if (!efforts?.length) return undefined;
+  const variants: Record<string, { reasoningEffort: string }> = {};
+  for (const level of efforts) {
+    const normalized = level.trim().toLowerCase();
+    if (!OPENCODE_EFFORT_LEVELS.includes(normalized as never)) continue;
+    variants[normalized] = { reasoningEffort: normalized };
+  }
+  return Object.keys(variants).length > 0 ? variants : undefined;
+}
+
 export function fillOpenCodeModel(
   model: OpenCodeModel,
   metadata: KnownModelMetadata,
@@ -122,6 +150,12 @@ export function fillOpenCodeModel(
   // 写 false 会盖住 models.dev 同名条目，用户明确写的 false 也不动。
   if (model.reasoning === undefined && metadata.reasoning === true) {
     next.reasoning = true;
+  }
+  // 思考档位：只有用户还没写 variants 时才补，档位表来自 models.dev 的
+  // reasoning_options。少了这一步，模型在 OpenCode / DSH 里只剩开关没有档位。
+  if (model.variants === undefined) {
+    const variants = variantsFromEfforts(metadata.reasoningEfforts);
+    if (variants) next.variants = variants;
   }
   return next;
 }

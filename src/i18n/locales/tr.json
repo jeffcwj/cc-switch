@@ -2090,6 +2090,8 @@
     "nativeCustomProviderRequired": "Yeni sağlayıcı kimliği bir paket ve en az bir model gerektirir. Yalnızca canlı yapılandırmadaki mevcut bir kimlik varsayılanları devralabilir.",
     "baseUrl": "Temel URL",
     "models": "Modeller",
+    "refreshModelMetadata": "Model bilgisini yenile",
+    "refreshModelMetadataHint": "Model adlarını models.dev ile yeniden eşleştirip bağlam penceresi, modalite ve düşünme düzeylerini doldurur",
     "addModel": "Manuel olarak ekle",
     "modelId": "Model Kimliği",
     "modelName": "Görünen Ad",
