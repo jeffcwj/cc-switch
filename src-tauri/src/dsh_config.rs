@@ -1208,6 +1208,31 @@ fn diverged_mcp_error(id: &str, other: Option<&PathBuf>, source: Option<&PathBuf
     )
 }
 
+/// DSH 认的思考档位名，顺序即升级顺序。
+const DSH_THINKING_LEVELS: [&str; 7] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+/// 洗一遍 `reasoningEfforts`：只留 DSH 认识的档位名，`off` 以外必须是有值的字符串，
+/// 并且至少要有一个 off 以外的档位——否则整份配置会加载失败，这里返回 None 让调用方退回 false。
+fn sanitize_reasoning_efforts(value: &Value) -> Option<Value> {
+    let efforts = value.as_object()?;
+    let mut cleaned = serde_json::Map::new();
+    for level in DSH_THINKING_LEVELS {
+        match efforts.get(level) {
+            Some(Value::Null) if level == "off" => {
+                cleaned.insert(level.into(), Value::Null);
+            }
+            Some(Value::String(wire)) if !wire.is_empty() => {
+                cleaned.insert(level.into(), Value::String(wire.clone()));
+            }
+            _ => {}
+        }
+    }
+    if !cleaned.keys().any(|level| level != "off") {
+        return None;
+    }
+    Some(Value::Object(cleaned))
+}
+
 /// The native `llm-pi-ai` provider node for an editor config, and the credentials text with a new
 /// key stored under CC Switch's reference (unchanged when the key is unchanged).
 fn native_provider(
@@ -1271,8 +1296,12 @@ fn native_provider(
                 Some(Value::Bool(false)) => {
                     native_model.insert("reasoningEfforts".into(), json!(false));
                 }
-                Some(Value::Object(efforts)) if !efforts.is_empty() => {
-                    native_model.insert("reasoningEfforts".into(), Value::Object(efforts.clone()));
+                Some(value @ Value::Object(_)) => {
+                    // 只有 off 一档、或者档位名/取值不合法的表会让整份配置加载失败
+                    // （DSH 要求至少声明一个 off 以外的档位），这里统一退回 false。
+                    let efforts =
+                        sanitize_reasoning_efforts(value).unwrap_or_else(|| Value::Bool(false));
+                    native_model.insert("reasoningEfforts".into(), efforts);
                 }
                 _ => {
                     if let Some(reasoning) = model.get("reasoning").and_then(Value::as_bool) {
@@ -1899,6 +1928,25 @@ mod tests {
         assert_eq!(native["contextWindow"], 200000);
         assert_eq!(native["input"], json!(["text", "image"]));
         assert_eq!(native["reasoningEfforts"]["off"], json!(null));
+    }
+
+    #[test]
+    fn reasoning_efforts_are_cleaned_before_writing() {
+        // 只有 off 一档：DSH 会判非法，退回 false。
+        assert_eq!(sanitize_reasoning_efforts(&json!({"off": null})), None);
+        // 未知档位名、空字符串、off 以外的 null 都要丢掉，合法档位保留。
+        assert_eq!(
+            sanitize_reasoning_efforts(&json!({
+                "off": null,
+                "high": "high",
+                "max": "",
+                "xhigh": null,
+                "bogus": "bogus"
+            })),
+            Some(json!({"off": null, "high": "high"}))
+        );
+        // 非对象一律不认。
+        assert_eq!(sanitize_reasoning_efforts(&json!(true)), None);
     }
 
     #[test]

@@ -165,18 +165,39 @@ export function fillOpenCodeModel(
     limit.output = metadata.maxOutputTokens;
   }
   if (Object.keys(limit).length > 0) next.limit = limit;
-  if (model.modalities === undefined && metadata.inputModalities) {
-    const input =
-      dialect === "dsh"
-        ? metadata.inputModalities.filter((item) =>
-            DSH_INPUT_MODALITIES.has(item),
-          )
-        : metadata.inputModalities;
-    if (input.length > 0) {
+  // DSH 方言下 pdf 之类会让整份配置加载失败，所以两边都先按白名单过滤。
+  const metadataInput = metadata.inputModalities?.filter(
+    (item) => dialect !== "dsh" || DSH_INPUT_MODALITIES.has(item),
+  );
+  if (metadataInput?.length) {
+    const existing = model.modalities as
+      | { input?: string[]; output?: string[] }
+      | undefined;
+    const current = existing?.input;
+    if (current === undefined) {
       next.modalities = {
-        input,
+        input: metadataInput,
         output: metadata.outputModalities ?? ["text"],
       };
+    } else {
+      // 已知模态只加不减：用户手动开过的档不被抹掉，但 pdf 这类非法值顺手清掉。
+      const merged = current.filter(
+        (item) => dialect !== "dsh" || DSH_INPUT_MODALITIES.has(item),
+      );
+      for (const item of metadataInput) {
+        if (!merged.includes(item)) merged.push(item);
+      }
+      // 只有真变了才写：`["text","pdf"]` 换成 `["text","image"]` 长度一样但内容不同。
+      const changed =
+        merged.length !== current.length ||
+        merged.some((item, index) => item !== current[index]);
+      if (changed) {
+        next.modalities = {
+          output: metadata.outputModalities ?? ["text"],
+          ...existing,
+          input: merged,
+        };
+      }
     }
   }
   // OpenCode 只给 reasoning 为真的模型生成思考档位（ctrl+t）。只补 true：
@@ -188,9 +209,24 @@ export function fillOpenCodeModel(
   // `reasoningEfforts`，OpenCode 认 `variants`，写错方言会在表单里多出一行
   //「模型属性」而且对端根本不读。
   if (dialect === "dsh") {
-    if (model.reasoningEfforts === undefined) {
-      const efforts = effortsFromLevels(metadata.reasoningEfforts);
-      if (efforts) next.reasoningEfforts = efforts;
+    const efforts = effortsFromLevels(metadata.reasoningEfforts);
+    const existing = model.reasoningEfforts;
+    if (efforts && (existing === undefined || existing === false)) {
+      next.reasoningEfforts = efforts;
+    } else if (efforts && typeof existing === "object" && existing !== null) {
+      // 已有档位表只补不删：缺的档补上（`{off:null}` 这种只有 off 的
+      // 非法配置也因此被救回来），用户自己配过的值保持不动。
+      const merged: Record<string, string | null> = {
+        ...(existing as Record<string, string | null>),
+      };
+      let added = false;
+      for (const [level, wire] of Object.entries(efforts)) {
+        if (merged[level] === undefined) {
+          merged[level] = wire;
+          added = true;
+        }
+      }
+      if (added) next.reasoningEfforts = merged;
     }
   } else if (model.variants === undefined) {
     const variants = variantsFromEfforts(metadata.reasoningEfforts);
