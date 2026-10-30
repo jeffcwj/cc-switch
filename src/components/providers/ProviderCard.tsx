@@ -11,7 +11,7 @@ import type {
   DraggableAttributes,
   DraggableSyntheticListeners,
 } from "@dnd-kit/core";
-import type { Provider } from "@/types";
+import type { Provider, SyncTargetApp } from "@/types";
 import type { AppId } from "@/lib/api";
 import { authApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -67,6 +67,8 @@ interface ProviderCardProps {
   onOpenWebsite: (url: string) => void;
   onDuplicate?: (provider: Provider) => void;
   onTest?: (provider: Provider) => void;
+  /** 把这家供应商同步到别的应用（只有 OpenCode 卡片支持） */
+  onSyncTo?: (provider: Provider, target: SyncTargetApp) => void;
   onOpenTerminal?: (provider: Provider) => void;
   isTesting?: boolean;
   dragHandleProps?: DragHandleProps;
@@ -191,6 +193,7 @@ export function ProviderCard({
   onOpenWebsite,
   onDuplicate,
   onTest,
+  onSyncTo,
   onOpenTerminal,
   isTesting,
   dragHandleProps,
@@ -641,6 +644,11 @@ export function ProviderCard({
             onTest={
               onTest && supportsConnectivityCheck(appId, provider)
                 ? () => onTest(provider)
+                : undefined
+            }
+            onSyncTo={
+              onSyncTo && appId === "opencode"
+                ? (target) => onSyncTo(provider, target)
                 : undefined
             }
             isTesting={isTesting}

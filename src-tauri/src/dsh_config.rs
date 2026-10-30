@@ -14,9 +14,12 @@ use std::{
 };
 
 pub(crate) fn data_dir() -> PathBuf {
-    std::env::var_os("DSH_HOME")
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
+    crate::settings::get_dsh_override_dir()
+        .or_else(|| {
+            std::env::var_os("DSH_HOME")
+                .filter(|value| !value.is_empty())
+                .map(PathBuf::from)
+        })
         .unwrap_or_else(|| get_home_dir().join(".dsh"))
 }
 
@@ -33,16 +36,43 @@ pub(crate) fn profile_path(name: &str) -> PathBuf {
     profile_dir(name).join("cordis.patch.yml")
 }
 
+/// Profile directory names that actually exist on disk. DSH also ships versioned profiles (for
+/// example `0.2.2-alpha.2`), which are the live ones when `web` / `desktop` were never created.
+fn discovered_profiles() -> Vec<String> {
+    let entries = match fs::read_dir(data_dir().join("profiles")) {
+        Ok(entries) => entries,
+        Err(_) => return Vec::new(),
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter(|entry| entry.path().join("cordis.patch.yml").exists())
+        .filter_map(|entry| entry.file_name().to_str().map(str::to_owned))
+        .filter(|name| !matches!(name.as_str(), "sdk" | "sdk-minimal"))
+        .collect();
+    names.sort();
+    names
+}
+
 /// Always prepare Web and Desktop: DSH's initProfile preserves an existing patch and supplies
 /// the remaining files on first launch. Optional runtime profiles are only written if present.
 pub(crate) fn target_paths() -> Vec<PathBuf> {
-    TARGET_PROFILES
+    let mut paths: Vec<PathBuf> = TARGET_PROFILES
         .iter()
         .filter_map(|name| {
             let path = profile_path(name);
             (DISPLAY_PROFILES.contains(name) || path.exists()).then_some(path)
         })
-        .collect()
+        .collect();
+    for name in discovered_profiles() {
+        if TARGET_PROFILES.contains(&name.as_str()) {
+            continue;
+        }
+        let path = profile_path(&name);
+        if !paths.contains(&path) {
+            paths.push(path);
+        }
+    }
+    paths
 }
 
 /// The authoritative profile providers and MCP are read from first: `web`, else `desktop`, else

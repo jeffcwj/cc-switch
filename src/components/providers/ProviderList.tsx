@@ -19,7 +19,7 @@ import { Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
-import type { OpenClawProviderConfig, Provider } from "@/types";
+import type { OpenClawProviderConfig, Provider, SyncTargetApp } from "@/types";
 import { getOpencodeDeclaredModels } from "@/components/providers/forms/helpers/opencodeFormUtils";
 import type { AppId } from "@/lib/api";
 import { providersApi } from "@/lib/api/providers";
@@ -87,6 +87,10 @@ interface ProviderListProps {
   onDisableOmoSlim?: () => void;
   onDuplicate: (provider: Provider) => void;
   onConfigureUsage?: (provider: Provider) => void;
+  /** 把这家供应商同步到别的应用（目前只有 OpenCode 页面会传） */
+  onSyncTo?: (provider: Provider, target: SyncTargetApp) => void;
+  /** 一次把当前应用的全部供应商同步过去 */
+  onSyncAll?: (target: SyncTargetApp) => void;
   onOpenWebsite: (url: string) => void;
   onOpenTerminal?: (provider: Provider) => void;
   onCreate?: () => void;
@@ -117,6 +121,8 @@ export function ProviderList({
   onDisableOmoSlim,
   onDuplicate,
   onConfigureUsage,
+  onSyncTo,
+  onSyncAll,
   onOpenWebsite,
   onOpenTerminal,
   onCreate,
@@ -551,6 +557,7 @@ export function ProviderList({
       onEdit={onEdit}
       onDelete={onDelete}
       onDuplicate={onDuplicate}
+      onSyncTo={onSyncTo}
       onConfigureUsage={
         onConfigureUsage ? (item) => onConfigureUsage(item) : () => undefined
       }
@@ -648,6 +655,19 @@ export function ProviderList({
       {piStateErrorNotice}
       {liveConfigErrorNotice}
       {searchSlot && createPortal(searchField, searchSlot)}
+      {onSyncAll && filteredProviders.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-panel border border-dashed border-border bg-subtle px-3 py-2">
+          <span className="text-caption text-fg-3">
+            {t("provider.syncAllHint")}
+          </span>
+          <Button variant="quiet" size="sm" onClick={() => onSyncAll("dsh")}>
+            {t("provider.syncAllToDsh")}
+          </Button>
+          <Button variant="quiet" size="sm" onClick={() => onSyncAll("codex")}>
+            {t("provider.syncAllToCodex")}
+          </Button>
+        </div>
+      )}
       {showListHeader && (
         <div
           className={cn(
@@ -717,6 +737,7 @@ interface SortableProviderCardProps {
   onEdit: (provider: Provider) => void;
   onDelete: (provider: Provider) => void;
   onDuplicate: (provider: Provider) => void;
+  onSyncTo?: (provider: Provider, target: SyncTargetApp) => void;
   onConfigureUsage: (provider: Provider) => void;
   onOpenWebsite: (url: string) => void;
   onOpenTerminal?: (provider: Provider) => void;

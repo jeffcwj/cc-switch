@@ -18,7 +18,7 @@ import {
   Search,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { Provider, VisibleApps } from "@/types";
+import type { Provider, SyncReport, SyncTargetApp, VisibleApps } from "@/types";
 import { KNOWN_APP_TYPES, type AppTypeFilter } from "@/types/usage";
 import type { EnvConflict } from "@/types/env";
 import type { SubscriptionQuota } from "@/types/subscription";
@@ -1480,6 +1480,39 @@ function App() {
     return null;
   };
 
+  /** 把一次「同步到 DSH/Codex」的结果讲给用户听，然后刷新两个应用的供应商列表。 */
+  const reportProviderSync = async (run: Promise<SyncReport>) => {
+    try {
+      const report = await run;
+      const done = [
+        report.created.length > 0
+          ? t("provider.syncCreated", { count: report.created.length })
+          : null,
+        report.updated.length > 0
+          ? t("provider.syncUpdated", { count: report.updated.length })
+          : null,
+      ].filter((part): part is string => part !== null);
+
+      if (done.length > 0) {
+        toast.success(done.join(" · "));
+      }
+      if (report.skipped.length > 0) {
+        toast.info(
+          t("provider.syncSkipped", {
+            count: report.skipped.length,
+            names: report.skipped.map((item) => item.name).join("、"),
+          }),
+        );
+      }
+      if (done.length === 0 && report.skipped.length === 0) {
+        toast.info(t("provider.syncNothing"));
+      }
+      await queryClient.invalidateQueries({ queryKey: ["providers"] });
+    } catch (error) {
+      toast.error(extractErrorMessage(error) || t("provider.syncFailed"));
+    }
+  };
+
   const listCallbacks = {
     onEdit: (provider: Provider) => {
       setFormModeView(currentModeView);
@@ -1488,6 +1521,22 @@ function App() {
     onDelete: (provider: Provider) =>
       setConfirmAction({ provider, action: "delete" }),
     onDuplicate: handleDuplicateProvider,
+    onSyncTo:
+      activeApp === "opencode"
+        ? (provider: Provider, target: SyncTargetApp) => {
+            void reportProviderSync(
+              providersApi.syncOpenCodeProvider(provider.id, target),
+            );
+          }
+        : undefined,
+    onSyncAll:
+      activeApp === "opencode"
+        ? (target: SyncTargetApp) => {
+            void reportProviderSync(
+              providersApi.syncAllOpenCodeProviders(target),
+            );
+          }
+        : undefined,
     onConfigureUsage: setUsageProvider,
     onOpenWebsite: handleOpenWebsite,
     onOpenTerminal:

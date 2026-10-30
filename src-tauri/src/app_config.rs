@@ -461,7 +461,7 @@ use crate::prompt_files::prompt_file_path;
 use crate::provider::ProviderManager;
 
 /// 应用类型
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AppType {
     Claude,

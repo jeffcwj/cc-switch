@@ -3,6 +3,8 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   Provider,
   ProviderMeta,
+  SyncReport,
+  SyncTargetApp,
   UniversalProvider,
   UniversalProvidersMap,
 } from "@/types";
@@ -230,6 +232,25 @@ export const providersApi = {
    */
   async importOpenCodeFromLive(): Promise<number> {
     return await invoke("import_opencode_providers_from_live");
+  },
+
+  /**
+   * 把一家 OpenCode 供应商同步到 DSH 或 Codex 的供应商列表。
+   * 以「供应商标识」为键：已有就更新，没有就新建。
+   */
+  async syncOpenCodeProvider(
+    providerId: string,
+    target: SyncTargetApp,
+  ): Promise<SyncReport> {
+    return await invoke("sync_opencode_provider", { providerId, target });
+  },
+
+  /**
+   * 把全部 OpenCode 供应商同步到 DSH 或 Codex。
+   * 目标应用装不下的（例如 Codex 无法直连 Anthropic）会出现在 skipped 里。
+   */
+  async syncAllOpenCodeProviders(target: SyncTargetApp): Promise<SyncReport> {
+    return await invoke("sync_all_opencode_providers", { target });
   },
 
   /**

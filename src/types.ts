@@ -43,6 +43,23 @@ export interface CustomEndpoint {
   lastUsed?: number;
 }
 
+/** 可以把 OpenCode 供应商同步过去的应用 */
+export type SyncTargetApp = "dsh" | "codex";
+
+/** 目标应用装不下的供应商，连同原因一起回报给界面 */
+export interface SyncSkip {
+  id: string;
+  name: string;
+  reason: string;
+}
+
+/** 一次同步的结果。created / updated 里的字符串是目标应用里的键（DSH 是供应商标识，Codex 是名字） */
+export interface SyncReport {
+  created: string[];
+  updated: string[];
+  skipped: SyncSkip[];
+}
+
 // 端点候选项（用于端点测速弹窗）
 export interface EndpointCandidate {
   id?: string;
@@ -486,6 +503,8 @@ export interface Settings {
   piConfigDir?: string;
   // 覆盖 Oh My Pi agent 配置目录（可选）
   ompConfigDir?: string;
+  // 覆盖 DeepSeek Harness 数据目录（可选，等价于给 DSH 设 DSH_HOME）
+  dshConfigDir?: string;
 
   // ===== 当前供应商 ID（设备级）=====
   // 当前 Claude 供应商 ID（优先于数据库 is_current）

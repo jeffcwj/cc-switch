@@ -1039,6 +1039,47 @@ pub fn import_opencode_providers_from_live(state: State<'_, AppState>) -> Result
         .map_err(|e| e.to_string())
 }
 
+/// Copy one OpenCode provider into the DSH or Codex list. Clicking the provider card's
+/// "同步到" goes here; the key is the OpenCode provider key (its row id).
+#[tauri::command]
+pub async fn sync_opencode_provider(
+    app_handle: tauri::AppHandle,
+    providerId: String,
+    target: String,
+) -> Result<crate::services::provider::sync_opencode::SyncReport, String> {
+    let target = crate::services::provider::sync_opencode::target_app(&target)
+        .map_err(|error| error.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app_handle
+            .try_state::<AppState>()
+            .ok_or_else(|| "应用状态不可用".to_string())?;
+        crate::services::provider::sync_opencode::sync_one(state.inner(), &providerId, target)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("同步任务执行失败: {error}"))?
+}
+
+/// Copy every OpenCode provider into the DSH or Codex list, skipping the ones the target
+/// cannot load (Anthropic-only providers for Codex, unknown npm packages).
+#[tauri::command]
+pub async fn sync_all_opencode_providers(
+    app_handle: tauri::AppHandle,
+    target: String,
+) -> Result<crate::services::provider::sync_opencode::SyncReport, String> {
+    let target = crate::services::provider::sync_opencode::target_app(&target)
+        .map_err(|error| error.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app_handle
+            .try_state::<AppState>()
+            .ok_or_else(|| "应用状态不可用".to_string())?;
+        crate::services::provider::sync_opencode::sync_all(state.inner(), target)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("同步任务执行失败: {error}"))?
+}
+
 #[tauri::command]
 pub fn get_opencode_live_provider_ids() -> Result<Vec<String>, String> {
     crate::opencode_config::get_providers()

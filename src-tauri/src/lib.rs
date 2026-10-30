@@ -1517,6 +1517,8 @@ pub fn run() {
             commands::delete_provider,
             commands::add_provider_to_live_config,
             commands::remove_provider_from_live_config,
+            commands::sync_opencode_provider,
+            commands::sync_all_opencode_providers,
             commands::switch_provider,
             commands::import_default_config,
             commands::get_claude_desktop_status,

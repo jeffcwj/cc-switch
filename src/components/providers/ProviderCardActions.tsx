@@ -71,6 +71,8 @@ interface ProviderCardActionsProps {
   onDelete: () => void;
   onDuplicate?: () => void;
   onTest?: () => void;
+  /** 把这家供应商同步到别的应用（目前只有 OpenCode 卡片会传） */
+  onSyncTo?: (target: "dsh" | "codex") => void;
   isTesting?: boolean;
   onConfigureUsage?: () => void;
   onOpenTerminal?: () => void;
@@ -91,6 +93,7 @@ export function ProviderCardActions({
   onDelete,
   onDuplicate,
   onTest,
+  onSyncTo,
   isTesting,
   onConfigureUsage,
   onOpenTerminal,
@@ -207,6 +210,27 @@ export function ProviderCardActions({
             <ModeMenuItem key={item.key} item={item} />
           ))}
           {menuItems.length > 0 && <DropdownMenuSeparator />}
+          {onSyncTo && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                {t("provider.syncTo")}
+                <ChevronRight
+                  aria-hidden="true"
+                  className="ml-auto h-3.5 w-3.5 text-fg-3"
+                />
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="min-w-56">
+                  <DropdownMenuItem onSelect={() => onSyncTo("dsh")}>
+                    {t("provider.syncToDsh")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onSyncTo("codex")}>
+                    {t("provider.syncToCodex")}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          )}
           {onDuplicate && (
             <DropdownMenuItem onSelect={onDuplicate}>
               {t("provider.duplicate")}

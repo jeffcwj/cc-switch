@@ -25,6 +25,7 @@ mod omp;
 #[cfg(test)]
 mod opencode_tests;
 mod pi;
+pub mod sync_opencode;
 mod usage;
 
 use indexmap::IndexMap;
