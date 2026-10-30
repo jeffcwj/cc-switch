@@ -232,6 +232,44 @@ fn dsh_provider(view: &SourceView) -> Result<Provider, AppError> {
                     entry.insert(key.into(), value.clone());
                 }
             }
+            // OpenCode models describe their thinking levels as `variants`; DSH calls the
+            // same thing `reasoningEfforts` (a name → effort map, or `false` for none).
+            let efforts = model
+                .get("variants")
+                .and_then(Value::as_object)
+                .map(|variants| {
+                    variants
+                        .iter()
+                        .filter_map(|(name, variant)| {
+                            let effort = variant
+                                .get("reasoningEffort")
+                                .and_then(Value::as_str)
+                                .or_else(|| variant.as_str())?;
+                            Some((name.clone(), json!(effort)))
+                        })
+                        .collect::<Map<String, Value>>()
+                })
+                .unwrap_or_default();
+            match (model.get("reasoning").and_then(Value::as_bool), efforts) {
+                // The model is not a reasoning model at all.
+                (Some(false), _) => {
+                    entry.insert("reasoningEfforts".into(), Value::Bool(false));
+                }
+                (_, efforts) if !efforts.is_empty() => {
+                    let mut ordered = Map::new();
+                    // "off" first: it means "send no effort at all".
+                    if !efforts.contains_key("off") {
+                        ordered.insert("off".into(), Value::Null);
+                    }
+                    ordered.extend(efforts);
+                    entry.insert("reasoningEfforts".into(), Value::Object(ordered));
+                }
+                // Reasoning model without declared variants: let DSH fill in its defaults.
+                (Some(true), _) => {
+                    entry.insert("reasoning".into(), Value::Bool(true));
+                }
+                _ => {}
+            }
             (id.clone(), Value::Object(entry))
         })
         .collect();
@@ -476,5 +514,66 @@ mod tests {
         assert!(codex_provider(&view, "row-id".to_string()).is_err());
         // DSH can still take it.
         assert!(dsh_provider(&view).is_ok());
+    }
+
+    fn reasoning_model(reasoning: Value, variants: Value) -> Provider {
+        Provider::with_id(
+            "sample".to_string(),
+            "Sample".to_string(),
+            json!({
+                "npm": "@ai-sdk/openai",
+                "name": "Sample",
+                "options": { "baseURL": "https://api.example.com/v1", "apiKey": "sk-test" },
+                "models": {
+                    "model-a": {
+                        "name": "Model A",
+                        "reasoning": reasoning,
+                        "variants": variants
+                    }
+                }
+            }),
+            Some("https://api.example.com/v1".to_string()),
+        )
+    }
+
+    #[test]
+    fn dsh_row_keeps_opencode_thinking_variants_as_efforts() {
+        let source = reasoning_model(
+            json!(true),
+            json!({
+                "low": { "reasoningEffort": "low" },
+                "max": { "reasoningEffort": "max" }
+            }),
+        );
+        let view = SourceView::of(&source).unwrap();
+        let provider = dsh_provider(&view).unwrap();
+        let efforts = &provider.settings_config["models"]["model-a"]["reasoningEfforts"];
+        assert_eq!(efforts["low"], "low");
+        assert_eq!(efforts["max"], "max");
+        // DSH exposes an explicit "off" level; it must be first-class, not missing.
+        assert!(efforts.get("off").is_some());
+    }
+
+    #[test]
+    fn dsh_row_marks_non_reasoning_models() {
+        let source = reasoning_model(json!(false), Value::Null);
+        let view = SourceView::of(&source).unwrap();
+        let provider = dsh_provider(&view).unwrap();
+        assert_eq!(
+            provider.settings_config["models"]["model-a"]["reasoningEfforts"],
+            Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn dsh_row_keeps_reasoning_flag_when_variants_are_missing() {
+        let source = reasoning_model(json!(true), Value::Null);
+        let view = SourceView::of(&source).unwrap();
+        let provider = dsh_provider(&view).unwrap();
+        // Let dsh_config fill in its standard effort set.
+        assert_eq!(
+            provider.settings_config["models"]["model-a"]["reasoning"],
+            Value::Bool(true)
+        );
     }
 }
