@@ -440,7 +440,7 @@ export function OpenCodeFormFields({
       (metadata) => {
         const current = modelsRef.current;
         if (!Object.prototype.hasOwnProperty.call(current, id)) return false;
-        const filled = fillOpenCodeModel(current[id], metadata);
+        const filled = fillOpenCodeModel(current[id], metadata, modelDialect);
         if (!metadataFilledAnything(current[id], filled)) return false;
         commitModels({ ...current, [id]: filled });
         return true;
@@ -468,12 +468,16 @@ export function OpenCodeFormFields({
     }
     const current = modelsRef.current;
     if (!Object.prototype.hasOwnProperty.call(current, id)) return false;
-    const filled = fillOpenCodeModel(current[id], {
-      contextWindow: advertised.contextWindow,
-      maxOutputTokens: advertised.maxOutputTokens,
-      inputModalities: advertised.inputModalities,
-      reasoning: advertised.reasoning,
-    });
+    const filled = fillOpenCodeModel(
+      current[id],
+      {
+        contextWindow: advertised.contextWindow,
+        maxOutputTokens: advertised.maxOutputTokens,
+        inputModalities: advertised.inputModalities,
+        reasoning: advertised.reasoning,
+      },
+      modelDialect,
+    );
     if (!metadataFilledAnything(current[id], filled)) return false;
     commitModels({ ...current, [id]: filled });
     return true;

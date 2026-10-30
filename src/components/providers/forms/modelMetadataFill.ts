@@ -127,9 +127,34 @@ function variantsFromEfforts(
   return Object.keys(variants).length > 0 ? variants : undefined;
 }
 
+/** DSH 的思考档位是「档位名 → 上游值」，且 `off` 用 null 表示关闭。 */
+function effortsFromLevels(
+  efforts: readonly string[] | undefined,
+): Record<string, string | null> | undefined {
+  if (!efforts?.length) return undefined;
+  const map: Record<string, string | null> = {};
+  for (const level of efforts) {
+    const normalized = level.trim().toLowerCase();
+    if (normalized === "none" || normalized === "off") {
+      map.off = null;
+      continue;
+    }
+    if (!OPENCODE_EFFORT_LEVELS.includes(normalized as never)) continue;
+    map[normalized] = normalized;
+  }
+  // DSH 要求至少有一个 off 以外的档位，否则整份配置校验失败。
+  if (!Object.keys(map).some((level) => level !== "off")) return undefined;
+  map.off = null;
+  return map;
+}
+
+/** DSH 只认 text / image，pdf、video 之类会让整份配置加载失败。 */
+const DSH_INPUT_MODALITIES = new Set(["text", "image"]);
+
 export function fillOpenCodeModel(
   model: OpenCodeModel,
   metadata: KnownModelMetadata,
+  dialect: "opencode" | "dsh" = "opencode",
 ): OpenCodeModel {
   const next = { ...model };
   const limit = { ...(model.limit ?? {}) };
@@ -141,19 +166,33 @@ export function fillOpenCodeModel(
   }
   if (Object.keys(limit).length > 0) next.limit = limit;
   if (model.modalities === undefined && metadata.inputModalities) {
-    next.modalities = {
-      input: metadata.inputModalities,
-      output: metadata.outputModalities ?? ["text"],
-    };
+    const input =
+      dialect === "dsh"
+        ? metadata.inputModalities.filter((item) =>
+            DSH_INPUT_MODALITIES.has(item),
+          )
+        : metadata.inputModalities;
+    if (input.length > 0) {
+      next.modalities = {
+        input,
+        output: metadata.outputModalities ?? ["text"],
+      };
+    }
   }
   // OpenCode 只给 reasoning 为真的模型生成思考档位（ctrl+t）。只补 true：
   // 写 false 会盖住 models.dev 同名条目，用户明确写的 false 也不动。
   if (model.reasoning === undefined && metadata.reasoning === true) {
     next.reasoning = true;
   }
-  // 思考档位：只有用户还没写 variants 时才补，档位表来自 models.dev 的
-  // reasoning_options。少了这一步，模型在 OpenCode / DSH 里只剩开关没有档位。
-  if (model.variants === undefined) {
+  // 思考档位：档位表来自 models.dev 的 reasoning_options。DSH 认
+  // `reasoningEfforts`，OpenCode 认 `variants`，写错方言会在表单里多出一行
+  //「模型属性」而且对端根本不读。
+  if (dialect === "dsh") {
+    if (model.reasoningEfforts === undefined) {
+      const efforts = effortsFromLevels(metadata.reasoningEfforts);
+      if (efforts) next.reasoningEfforts = efforts;
+    }
+  } else if (model.variants === undefined) {
     const variants = variantsFromEfforts(metadata.reasoningEfforts);
     if (variants) next.variants = variants;
   }

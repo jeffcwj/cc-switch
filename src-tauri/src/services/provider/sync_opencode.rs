@@ -204,6 +204,19 @@ fn codex_wire_api(npm: &str) -> Option<&'static str> {
     }
 }
 
+/// DSH's `input` accepts only `text` and `image` (`MODALITIES` in dsh-llm-pi-ai); anything
+/// else makes the whole profile fail to load, so unsupported modalities are dropped rather
+/// than copied.
+fn dsh_input_modalities(model: &Value) -> Option<Vec<Value>> {
+    let input = model.pointer("/modalities/input")?.as_array()?;
+    let kept: Vec<Value> = input
+        .iter()
+        .filter(|item| matches!(item.as_str(), Some("text") | Some("image")))
+        .cloned()
+        .collect();
+    (!kept.is_empty()).then_some(kept)
+}
+
 fn dsh_provider(view: &SourceView) -> Result<Provider, AppError> {
     let api = dsh_api(&view.npm).ok_or_else(|| {
         AppError::InvalidInput(format!(
@@ -225,12 +238,15 @@ fn dsh_provider(view: &SourceView) -> Result<Provider, AppError> {
                 .unwrap_or(id)
                 .to_string();
             entry.insert("name".into(), json!(display));
-            // Model limits and modalities mean the same thing in both schemas; carry them
-            // over so DSH can size the context and advertise image input.
-            for key in ["limit", "modalities"] {
-                if let Some(value) = model.get(key) {
-                    entry.insert(key.into(), value.clone());
-                }
+            // Limits mean the same thing in both schemas; carry them over so DSH can size the
+            // context. Modalities do not: OpenCode also models pdf/video input, while DSH only
+            // accepts `text` and `image` (`MODALITIES` in dsh-llm-pi-ai) and rejects the whole
+            // config on anything else.
+            if let Some(limit) = model.get("limit") {
+                entry.insert("limit".into(), limit.clone());
+            }
+            if let Some(input) = dsh_input_modalities(model) {
+                entry.insert("modalities".into(), json!({ "input": input }));
             }
             // OpenCode models describe their thinking levels as `variants`; DSH calls the
             // same thing `reasoningEfforts` (a name → effort map, or `false` for none).
@@ -477,6 +493,27 @@ mod tests {
                 .and_then(|meta| meta.endpoint_auto_select),
             Some(true)
         );
+    }
+
+    #[test]
+    fn dsh_row_drops_modalities_dsh_would_reject() {
+        let mut provider = opencode_provider("@ai-sdk/openai-compatible");
+        provider.settings_config["models"]["model-a"]["modalities"]["input"] =
+            json!(["text", "image", "pdf"]);
+        provider.settings_config["models"]["model-b"] = json!({
+            "name": "Model B",
+            "modalities": { "input": ["pdf"] }
+        });
+        let view = SourceView::of(&provider).unwrap();
+        let row = dsh_provider(&view).unwrap();
+        assert_eq!(
+            row.settings_config["models"]["model-a"]["modalities"]["input"],
+            json!(["text", "image"])
+        );
+        // Nothing DSH accepts is left, so the field is omitted instead of written empty.
+        assert!(row.settings_config["models"]["model-b"]
+            .get("modalities")
+            .is_none());
     }
 
     #[test]

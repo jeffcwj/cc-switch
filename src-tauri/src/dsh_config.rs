@@ -709,21 +709,54 @@ fn get_providers_from(
             .flatten()
         {
             if let Some(id) = model.get("id").and_then(Value::as_str) {
-                let mut model = model.clone();
+                // 原生形状（pi-ai 的 `modelFields`）和编辑器形状不是一回事：
+                // 原生用 contextWindow / maxTokens / input / reasoningEfforts，
+                // 编辑器用 limit / modalities / reasoning / reasoningEfforts。
+                // 只重建编辑器认识的键，别把原生键留在对象里——留下的每一个都会
+                // 在表单里多出一行「模型属性」，而且改了也不生效（写回时按编辑器
+                // 键取值），用户看到的就是"上下文重复、input 改回 pdf"。
+                let mut editor = serde_json::Map::new();
+                if let Some(name) = model.get("name") {
+                    editor.insert("name".into(), name.clone());
+                }
                 let mut limits = serde_json::Map::new();
-                for (native, editor) in [("contextWindow", "context"), ("maxTokens", "output")] {
-                    if let Some(value) = model.get(native) {
-                        limits.insert(editor.into(), value.clone());
+                for (native, editor_key) in [("contextWindow", "context"), ("maxTokens", "output")]
+                {
+                    if let Some(value) = model.get(native).filter(|value| !value.is_null()) {
+                        limits.insert(editor_key.into(), value.clone());
                     }
                 }
-                model["limit"] = Value::Object(limits);
-                if let Some(efforts) = model.get("reasoningEfforts") {
-                    model["reasoning"] = json!(efforts.is_object());
+                if !limits.is_empty() {
+                    editor.insert("limit".into(), Value::Object(limits));
                 }
-                if let Some(input) = model.get("input").cloned() {
-                    model["modalities"] = json!({"input":input,"output":["text"]});
+                if let Some(input) = model.get("input").and_then(Value::as_array) {
+                    let input: Vec<Value> = input
+                        .iter()
+                        .filter(|value| matches!(value.as_str(), Some("text" | "image")))
+                        .cloned()
+                        .collect();
+                    if !input.is_empty() {
+                        editor.insert(
+                            "modalities".into(),
+                            json!({"input":input,"output":["text"]}),
+                        );
+                    }
                 }
-                models.insert(id.into(), model);
+                match model.get("reasoningEfforts") {
+                    Some(Value::Bool(false)) => {
+                        editor.insert("reasoning".into(), json!(false));
+                        editor.insert("reasoningEfforts".into(), json!(false));
+                    }
+                    Some(Value::Object(efforts)) if !efforts.is_empty() => {
+                        editor.insert("reasoning".into(), json!(true));
+                        editor.insert("reasoningEfforts".into(), Value::Object(efforts.clone()));
+                    }
+                    _ => {}
+                }
+                if let Some(compat) = model.get("compat").filter(|value| value.is_object()) {
+                    editor.insert("compat".into(), compat.clone());
+                }
+                models.insert(id.into(), Value::Object(editor));
             }
         }
         config["name"] = config.get("displayName").cloned().unwrap_or(json!(id));
@@ -1202,35 +1235,62 @@ fn native_provider(
         }
         let mut models = vec![];
         for (model_id, model) in config["models"].as_object().unwrap() {
-            let mut model = model.clone();
-            model["id"] = json!(model_id);
+            // 只产出 DSH 认的字段。编辑器方言的键（limit / modalities / reasoning /
+            // variants / options）写进原生配置对端不读，读回来还会冒充"模型属性"。
+            let mut native_model = serde_json::Map::new();
+            native_model.insert("id".into(), json!(model_id));
+            if let Some(name) = model.get("name").filter(|value| !value.is_null()) {
+                native_model.insert("name".into(), name.clone());
+            }
             for (from, to) in [("context", "contextWindow"), ("output", "maxTokens")] {
                 if let Some(value) = model
                     .pointer(&format!("/limit/{from}"))
                     .filter(|value| !value.is_null())
                     .cloned()
                 {
-                    model[to] = value;
+                    native_model.insert(to.into(), value);
                 }
             }
-            model.as_object_mut().unwrap().remove("limit");
-            if let Some(input) = model.pointer("/modalities/input").cloned() {
-                model["input"] = input;
+            // DSH 只认 text / image；pdf 之类会让整份配置校验失败。
+            let input = model
+                .pointer("/modalities/input")
+                .and_then(Value::as_array)
+                .or_else(|| model.get("input").and_then(Value::as_array))
+                .map(|input| {
+                    input
+                        .iter()
+                        .filter(|item| matches!(item.as_str(), Some("text" | "image")))
+                        .cloned()
+                        .collect::<Vec<_>>()
+                })
+                .filter(|input| !input.is_empty());
+            if let Some(input) = input {
+                native_model.insert("input".into(), Value::Array(input));
             }
-            let object = model.as_object_mut().unwrap();
-            object.remove("modalities");
-            if object.get("reasoning") == Some(&Value::Bool(false)) {
-                object.insert("reasoningEfforts".into(), Value::Bool(false));
-            } else if object.get("reasoning") == Some(&Value::Bool(true))
-                && !object.contains_key("reasoningEfforts")
-            {
-                object.insert(
-                    "reasoningEfforts".into(),
-                    json!({"off":null,"low":"low","medium":"medium","high":"high"}),
-                );
+            match model.get("reasoningEfforts") {
+                Some(Value::Bool(false)) => {
+                    native_model.insert("reasoningEfforts".into(), json!(false));
+                }
+                Some(Value::Object(efforts)) if !efforts.is_empty() => {
+                    native_model.insert("reasoningEfforts".into(), Value::Object(efforts.clone()));
+                }
+                _ => {
+                    if let Some(reasoning) = model.get("reasoning").and_then(Value::as_bool) {
+                        if reasoning {
+                            native_model.insert(
+                                "reasoningEfforts".into(),
+                                json!({"off":null,"low":"low","medium":"medium","high":"high"}),
+                            );
+                        } else {
+                            native_model.insert("reasoningEfforts".into(), json!(false));
+                        }
+                    }
+                }
             }
-            object.remove("reasoning");
-            models.push(model);
+            if let Some(compat) = model.get("compat").filter(|value| value.is_object()) {
+                native_model.insert("compat".into(), compat.clone());
+            }
+            models.push(Value::Object(native_model));
         }
         object.insert("models".into(), json!(models));
         if let Some(key) = config
@@ -1756,6 +1816,89 @@ mod tests {
         .unwrap();
         assert!(get_providers_from(&path, &credentials).unwrap().is_empty());
         assert_eq!(fs::read(&credentials).unwrap(), previous_credentials);
+    }
+
+    #[test]
+    fn editor_and_native_model_shapes_stay_disjoint() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("cordis.patch.yml");
+        let credentials = temp.path().join(".credentials.yaml");
+        // 一份"脏"原生配置：既有原生键，又混进了编辑器方言的 variants。
+        let original = "- id: llm-pi-ai\n  config:\n    providers:\n      gateway:\n        displayName: Gateway\n        api: openai-responses\n        baseURL: https://gateway.example/v1\n        apiKeyEnv: GATEWAY_KEY\n        models:\n          - id: test-model\n            name: Model\n            contextWindow: 100000\n            maxTokens: 1000\n            input: [text, image, pdf]\n            reasoningEfforts: {off: null, high: high}\n            variants: {high: {reasoningEffort: high}}\n            compat: {supportsStore: false}\n";
+        fs::write(&path, original).unwrap();
+        fs::write(
+            &credentials,
+            "version: 1\nrefs: {GATEWAY_KEY: test-value}\n",
+        )
+        .unwrap();
+
+        // 原生 → 编辑器：只留编辑器认识的键，原生键一个都不许漏出来（漏出来就是
+        // 表单里那行"模型属性"，而且改了不生效）；pdf 必须被丢掉。
+        let imported = get_providers_from(&path, &credentials).unwrap();
+        let model = &imported["gateway"]["models"]["test-model"];
+        let mut keys: Vec<&str> = model
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            [
+                "compat",
+                "limit",
+                "modalities",
+                "name",
+                "reasoning",
+                "reasoningEfforts"
+            ]
+        );
+        assert_eq!(model["limit"]["context"], 100000);
+        assert_eq!(model["limit"]["output"], 1000);
+        assert_eq!(model["modalities"]["input"], json!(["text", "image"]));
+        assert_eq!(model["reasoning"], true);
+        assert_eq!(model["reasoningEfforts"]["high"], "high");
+
+        // 编辑器 → 原生：只产出 DSH 的 modelFields，编辑器键不许写进配置。
+        let mut edited = imported["gateway"].clone();
+        edited["models"]["test-model"]["variants"] = json!({"low": {"reasoningEffort": "low"}});
+        edited["models"]["test-model"]["limit"]["context"] = json!(200000);
+        save_paths_and_commit(
+            std::slice::from_ref(&path),
+            &credentials,
+            "gateway",
+            Some(edited),
+            false,
+            || Ok(()),
+        )
+        .unwrap();
+        let text = read_text(&path).unwrap();
+        let entry = provider_entry(&text).unwrap();
+        let native =
+            serde_json::to_value(&entry["config"]["providers"]["gateway"]["models"][0]).unwrap();
+        let mut keys: Vec<&str> = native
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            [
+                "compat",
+                "contextWindow",
+                "id",
+                "input",
+                "maxTokens",
+                "name",
+                "reasoningEfforts"
+            ]
+        );
+        assert_eq!(native["contextWindow"], 200000);
+        assert_eq!(native["input"], json!(["text", "image"]));
+        assert_eq!(native["reasoningEfforts"]["off"], json!(null));
     }
 
     #[test]
