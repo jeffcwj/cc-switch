@@ -93,6 +93,10 @@ export const settingsApi = {
     return await invoke("get_config_dir", { app: appId });
   },
 
+  async listDshProfiles(): Promise<string[]> {
+    return await invoke("list_dsh_profiles");
+  },
+
   async openConfigFolder(appId: AppId): Promise<void> {
     await invoke("open_config_folder", { app: appId });
   },

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import type {
@@ -5,7 +6,15 @@ import type {
   SettingsFormState,
 } from "@/hooks/useSettings";
 import type { Settings } from "@/types";
+import { settingsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DirectoryInput,
   type DirectoryAppId,
@@ -61,6 +70,9 @@ const DIRECTORY_APPS: DirectoryAppId[] = [
 const normalizeDir = (value: unknown) =>
   typeof value === "string" && value.trim() ? value.trim() : undefined;
 
+/// Radix Select cannot hold an empty value, so "auto" needs its own token.
+const AUTO_DSH_PROFILE = "__auto__";
+
 interface AppConfigSectionProps {
   settings: SettingsFormState;
   savedSettings?: Settings;
@@ -89,12 +101,69 @@ export function AppConfigSection({
   onSaveDirectories,
 }: AppConfigSectionProps) {
   const { t } = useTranslation();
+  const [dshProfiles, setDshProfiles] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void settingsApi
+      .listDshProfiles()
+      .then((profiles) => {
+        if (!cancelled) setDshProfiles(profiles);
+      })
+      .catch(() => {
+        if (!cancelled) setDshProfiles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.dshConfigDir]);
 
   const isDirty = (app: DirectoryAppId) => {
     const field = DIRECTORY_FIELD[app];
     return (
       normalizeDir(settings[field as keyof SettingsFormState]) !==
       normalizeDir(savedSettings?.[field])
+    );
+  };
+
+  const dshProfileRow = () => {
+    const pinned = settings.dshProfile?.trim();
+    const value = pinned || AUTO_DSH_PROFILE;
+    const options =
+      pinned && !dshProfiles.includes(pinned)
+        ? [pinned, ...dshProfiles]
+        : dshProfiles;
+    return (
+      <SettingsRow
+        label={t("settings.dshProfile")}
+        help={{
+          title: t("settings.dshProfile"),
+          body: t("settings.dshProfileDescription"),
+        }}
+      >
+        <Select
+          value={value}
+          onValueChange={(next) =>
+            void onAutoSave({
+              dshProfile: next === AUTO_DSH_PROFILE ? undefined : next,
+            })
+          }
+        >
+          <SelectTrigger className="h-9 w-[240px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={AUTO_DSH_PROFILE}>
+              {t("settings.dshProfileAuto")}
+            </SelectItem>
+            {options.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingsRow>
     );
   };
 
@@ -189,6 +258,7 @@ export function AppConfigSection({
               />
             )}
             {directoryRow(app)}
+            {app === "dsh" && dshProfileRow()}
           </SettingsCard>
         </SettingsBlock>
       ))}

@@ -75,9 +75,31 @@ pub(crate) fn target_paths() -> Vec<PathBuf> {
     paths
 }
 
-/// The authoritative profile providers and MCP are read from first: `web`, else `desktop`, else
-/// the first target. Writes go to every target, so [`read_paths`] also lists the rest.
+/// Profile names the settings picker can offer: everything on disk plus the shipped templates.
+pub(crate) fn list_profiles() -> Vec<String> {
+    let mut names = discovered_profiles();
+    for name in TARGET_PROFILES {
+        if profile_path(name).exists() && !names.iter().any(|existing| existing == name) {
+            names.push(name.to_owned());
+        }
+    }
+    names.sort();
+    names
+}
+
+/// Profile pinned in settings, unless its directory disappeared (then fall back to auto).
+fn pinned_profile() -> Option<String> {
+    let name = crate::settings::get_dsh_profile()?;
+    profile_path(&name).exists().then_some(name)
+}
+
+/// The authoritative profile providers and MCP are read from first: the profile pinned in
+/// settings, else `web`, else `desktop`, else the first target. Writes go to every target, so
+/// [`read_paths`] also lists the rest.
 pub(crate) fn config_path() -> PathBuf {
+    if let Some(name) = pinned_profile() {
+        return profile_path(&name);
+    }
     DISPLAY_PROFILES
         .iter()
         .map(|name| profile_path(name))

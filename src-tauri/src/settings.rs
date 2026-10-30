@@ -562,6 +562,13 @@ pub struct AppSettings {
         skip_serializing_if = "Option::is_none"
     )]
     pub dsh_config_dir: Option<String>,
+    /// 选定的 DSH profile 名（空＝自动，按 web → desktop → 首个已存在的顺序）
+    #[serde(
+        default,
+        rename = "dshProfile",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub dsh_profile: Option<String>,
 
     // ===== 当前供应商 ID（设备级）=====
     /// 当前 Claude 供应商 ID（本地存储，优先于数据库 is_current）
@@ -701,6 +708,7 @@ impl Default for AppSettings {
             pi_config_dir: None,
             omp_config_dir: None,
             dsh_config_dir: None,
+            dsh_profile: None,
             current_provider_claude: None,
             current_provider_claude_desktop: None,
             current_provider_codex: None,
@@ -805,6 +813,13 @@ impl AppSettings {
 
         self.dsh_config_dir = self
             .dsh_config_dir
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+
+        self.dsh_profile = self
+            .dsh_profile
             .as_ref()
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
@@ -1323,6 +1338,16 @@ pub fn get_dsh_override_dir() -> Option<PathBuf> {
         .dsh_config_dir
         .as_ref()
         .map(|path| resolve_override_path(path))
+}
+
+/// 用户在设置里指定的 DSH profile 名（`None`＝自动选择 `web` → `desktop` → 首个已存在的）。
+pub fn get_dsh_profile() -> Option<String> {
+    let settings = settings_store().read().ok()?;
+    settings
+        .dsh_profile
+        .as_ref()
+        .map(|name| name.trim().to_owned())
+        .filter(|name| !name.is_empty())
 }
 
 pub fn preserve_codex_official_auth_on_switch() -> bool {

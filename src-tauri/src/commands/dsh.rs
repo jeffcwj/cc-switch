@@ -30,3 +30,9 @@ pub fn dsh_account_login_poll(flow_id: String) -> Result<bool, String> {
 pub fn dsh_account_login_cancel(flow_id: String) {
     crate::services::dsh_account::cancel_login(&flow_id)
 }
+
+/// Profile names under `$DSH_HOME/profiles` that CC Switch can target, for the settings picker.
+#[tauri::command]
+pub fn list_dsh_profiles() -> Vec<String> {
+    crate::dsh_config::list_profiles()
+}

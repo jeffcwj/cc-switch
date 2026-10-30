@@ -1885,6 +1885,7 @@ pub fn run() {
             commands::dsh_account_login_start,
             commands::dsh_account_login_poll,
             commands::dsh_account_login_cancel,
+            commands::list_dsh_profiles,
             commands::kimi_oauth_start,
             commands::kimi_oauth_poll,
             commands::kimi_oauth_cancel,

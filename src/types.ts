@@ -505,6 +505,8 @@ export interface Settings {
   ompConfigDir?: string;
   // 覆盖 DeepSeek Harness 数据目录（可选，等价于给 DSH 设 DSH_HOME）
   dshConfigDir?: string;
+  // 指定 DeepSeek Harness 的 profile（空＝自动：web → desktop → 首个已存在的）
+  dshProfile?: string;
 
   // ===== 当前供应商 ID（设备级）=====
   // 当前 Claude 供应商 ID（优先于数据库 is_current）
