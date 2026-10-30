@@ -6,6 +6,15 @@ import { parseHeaderOverrideJson } from "@/lib/requestOverrides";
 export interface FetchedModel {
   id: string;
   ownedBy: string | null;
+  /**
+   * 端点自己在 `/models` 里报的能力字段。自建中转通常一个字都不说（全是
+   * undefined），OpenRouter 这类会把上下文窗口、输出上限、输入模态都带上。
+   * 有值时优先于 models.dev，因为端点说的才是这一家真实生效的限制。
+   */
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  inputModalities?: string[];
+  reasoning?: boolean;
 }
 
 export interface ModelFetchOptions {

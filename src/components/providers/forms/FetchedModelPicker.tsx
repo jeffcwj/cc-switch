@@ -171,31 +171,44 @@ function FetchedModelPickerBody({
   const baseUrl = metadataSource?.baseUrl;
   const presets = metadataSource?.presets;
   const allIdsKey = allIds.join("\n");
+  const advertisedById = useMemo(() => {
+    const result = new Map<string, FetchedModel>();
+    for (const model of models) result.set(model.id, model);
+    return result;
+  }, [models]);
   const summaries = useMemo(() => {
     const result = new Map<string, string>();
     if (baseUrl === undefined) return result;
     const presetSources = presets?.();
     for (const id of allIdsKey.split("\n")) {
+      const advertised = advertisedById.get(id);
+      // 端点自报的优先：models.dev 说的是「同名模型一般多大」，端点说的是
+      // 「这一家实际给你多大」，两者冲突时后者才是真的。
       const metadata = resolveModelMetadata(id, {
         baseUrl,
         presets: presetSources,
         modelsDev,
       });
-      if (!metadata) continue;
+      const contextWindow =
+        advertised?.contextWindow ?? metadata?.contextWindow;
+      const reasoning =
+        advertised?.reasoning ??
+        metadata?.reasoning ??
+        (metadata?.reasoningEfforts?.length ?? 0) > 0;
+      const hasImage = (
+        advertised?.inputModalities ??
+        metadata?.inputModalities ??
+        []
+      ).includes("image");
+      if (!contextWindow && !reasoning && !hasImage) continue;
       const parts: string[] = [];
-      if (metadata.contextWindow) {
-        parts.push(formatContextWindow(metadata.contextWindow));
-      }
-      if (metadata.reasoning || metadata.reasoningEfforts?.length) {
-        parts.push(t("providerForm.modelPicker.reasoning"));
-      }
-      if (metadata.inputModalities?.includes("image")) {
-        parts.push(t("providerForm.modelPicker.image"));
-      }
+      if (contextWindow) parts.push(formatContextWindow(contextWindow));
+      if (reasoning) parts.push(t("providerForm.modelPicker.reasoning"));
+      if (hasImage) parts.push(t("providerForm.modelPicker.image"));
       if (parts.length > 0) result.set(id, parts.join(" · "));
     }
     return result;
-  }, [allIdsKey, baseUrl, modelsDev, presets, t]);
+  }, [allIdsKey, advertisedById, baseUrl, modelsDev, presets, t]);
 
   const setChecked = (ids: string[], checked: boolean) =>
     setDraft((prev) => {

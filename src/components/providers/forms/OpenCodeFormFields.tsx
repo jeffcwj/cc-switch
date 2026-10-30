@@ -442,6 +442,37 @@ export function OpenCodeFormFields({
       { silent },
     );
 
+  /**
+   * 端点自己在 `/models` 里报的参数（上下文窗口、输出上限、模态、推理）。
+   *
+   * 自建中转大多不在 models.dev 里，`fillModelMetadataFor` 对它们一无所获；
+   * 而这类网关往往已经把真实限制写在列表响应里了，所以先用它补，剩下的
+   * 空白再交给 models.dev。
+   */
+  const applyAdvertisedMetadata = (id: string) => {
+    const advertised = fetchedModels.find((model) => model.id === id);
+    if (
+      !advertised ||
+      (advertised.contextWindow === undefined &&
+        advertised.maxOutputTokens === undefined &&
+        !advertised.inputModalities?.length &&
+        advertised.reasoning === undefined)
+    ) {
+      return false;
+    }
+    const current = modelsRef.current;
+    if (!Object.prototype.hasOwnProperty.call(current, id)) return false;
+    const filled = fillOpenCodeModel(current[id], {
+      contextWindow: advertised.contextWindow,
+      maxOutputTokens: advertised.maxOutputTokens,
+      inputModalities: advertised.inputModalities,
+      reasoning: advertised.reasoning,
+    });
+    if (!metadataFilledAnything(current[id], filled)) return false;
+    commitModels({ ...current, [id]: filled });
+    return true;
+  };
+
   const handleApplyFetchedModels = ({ add, remove }: FetchedModelSelection) => {
     const next = { ...models };
     for (const id of remove) delete next[id];
@@ -458,8 +489,12 @@ export function OpenCodeFormFields({
         return kept;
       });
     }
-    // 弹窗里已经显示过这些参数，补完不再提示。
-    for (const id of Object.keys(additions)) fillModelMetadataFor(id, true);
+    // 弹窗里已经显示过这些参数，补完不再提示。端点自报的先用，再让
+    // models.dev 补剩下的空白。
+    for (const id of Object.keys(additions)) {
+      applyAdvertisedMetadata(id);
+      fillModelMetadataFor(id, true);
+    }
   };
 
   // Remove a model entry

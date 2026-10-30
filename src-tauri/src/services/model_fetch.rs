@@ -11,11 +11,27 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 /// 获取到的模型信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// 只有 `id` 是必然存在的。`/models` 端点愿意多说的能力字段（上下文窗口、
+/// 输出上限、输入模态、是否支持推理）一律可选：自建中转通常一个字都不说，
+/// OpenRouter 这类会把它们全带上。调用方拿到 `None` 就当端点没声明。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FetchedModel {
     pub id: String,
     pub owned_by: Option<String>,
+    /// 端点自报的上下文窗口（`context_length` / `limit.context` 等别名）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u64>,
+    /// 端点自报的单次输出上限。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<u64>,
+    /// 端点自报的输入模态，只保留已知的几种。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_modalities: Option<Vec<String>>,
+    /// 端点自报的推理能力；`None` 表示端点没提。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<bool>,
 }
 
 /// 模型列表响应的兼容格式。
@@ -36,6 +52,131 @@ struct ModelsResponse {
 struct ModelEntry {
     id: String,
     owned_by: Option<String>,
+    /// 供应商在 `/models` 里附带的能力字段形状各异，原样收下再归一化。
+    #[serde(flatten)]
+    rest: serde_json::Map<String, serde_json::Value>,
+}
+
+/// 端点在 `/models` 里报上下文窗口时用过的字段名。
+///
+/// 别名表照抄 DSH 的 `readListing`（`dsh-llm-pi-ai` 与它读同一批端点），
+/// 再加 `limit.input` 这种把输入窗口单列的写法。
+const CONTEXT_WINDOW_PATHS: &[&str] = &[
+    "contextWindow",
+    "context_window",
+    "context_length",
+    "max_input_tokens",
+    "limit.context",
+    "limit.input",
+];
+
+/// 端点报单次输出上限时用过的字段名（含 OpenRouter 的
+/// `top_provider.max_completion_tokens`）。
+const MAX_OUTPUT_PATHS: &[&str] = &[
+    "maxOutputTokens",
+    "max_output_tokens",
+    "maxTokens",
+    "max_tokens",
+    "limit.output",
+    "top_provider.max_completion_tokens",
+];
+
+/// 端点报输入模态时用过的字段名。
+const INPUT_MODALITY_PATHS: &[&str] = &[
+    "architecture.input_modalities",
+    "input_modalities",
+    "modalities.input",
+    "input",
+];
+
+/// 端点报推理能力时用过的字段名。
+const REASONING_PATHS: &[&str] = &["capabilities.reasoning", "reasoning"];
+
+/// 已知的输入模态；其余取值（例如某些网关自造的 `file`）一律丢弃。
+const KNOWN_MODALITIES: &[&str] = &["text", "image", "audio", "video", "pdf"];
+
+/// 按 `a.b.c` 路径取一个字段，取不到就是 `None`。
+fn lookup<'a>(
+    map: &'a serde_json::Map<String, serde_json::Value>,
+    path: &str,
+) -> Option<&'a serde_json::Value> {
+    let mut segments = path.split('.');
+    let mut current = map.get(segments.next()?)?;
+    for segment in segments {
+        current = current.get(segment)?;
+    }
+    Some(current)
+}
+
+/// 正整数才认：`"64000"` 这种字符串也收，`0`、负数、小数、对象一律当没写。
+fn positive_integer(value: Option<&serde_json::Value>) -> Option<u64> {
+    let value = value?;
+    if let Some(number) = value.as_u64() {
+        return (number > 0).then_some(number);
+    }
+    value
+        .as_str()?
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .filter(|number| *number > 0)
+}
+
+fn advertised_capacity(
+    entry: &serde_json::Map<String, serde_json::Value>,
+    paths: &[&str],
+) -> Option<u64> {
+    paths
+        .iter()
+        .find_map(|path| positive_integer(lookup(entry, path)))
+}
+
+fn advertised_modalities(
+    entry: &serde_json::Map<String, serde_json::Value>,
+) -> Option<Vec<String>> {
+    let declared = INPUT_MODALITY_PATHS
+        .iter()
+        .find_map(|path| lookup(entry, path)?.as_array())?;
+    let mut modalities: Vec<String> = declared
+        .iter()
+        .filter_map(|modality| modality.as_str())
+        .map(|modality| modality.trim().to_ascii_lowercase())
+        .filter(|modality| KNOWN_MODALITIES.contains(&modality.as_str()))
+        .collect();
+    modalities.sort();
+    modalities.dedup();
+    (!modalities.is_empty()).then_some(modalities)
+}
+
+/// `reasoning: true`、`capabilities.reasoning: true`，或 `supported_parameters`
+/// 里列了 `reasoning`，都算端点说「这个模型能推理」。
+fn advertised_reasoning(entry: &serde_json::Map<String, serde_json::Value>) -> Option<bool> {
+    if let Some(declared) = REASONING_PATHS
+        .iter()
+        .find_map(|path| lookup(entry, path)?.as_bool())
+    {
+        return Some(declared);
+    }
+    let parameters = lookup(entry, "supported_parameters")?.as_array()?;
+    Some(
+        parameters
+            .iter()
+            .filter_map(|parameter| parameter.as_str())
+            .any(|parameter| parameter.eq_ignore_ascii_case("reasoning")),
+    )
+}
+
+/// 把 `data[]` 的一条记录转成对外结构：能读到的能力字段都带上，读不到就留空。
+fn fetched_from_entry(entry: ModelEntry) -> FetchedModel {
+    let ModelEntry { id, owned_by, rest } = entry;
+    FetchedModel {
+        id,
+        owned_by,
+        context_window: advertised_capacity(&rest, CONTEXT_WINDOW_PATHS),
+        max_output_tokens: advertised_capacity(&rest, MAX_OUTPUT_PATHS),
+        input_modalities: advertised_modalities(&rest),
+        reasoning: advertised_reasoning(&rest),
+    }
 }
 
 /// `models[]` 条目对应的模型 id：`slug` 优先，回退 OpenAI 风格的 `id`；
@@ -141,16 +282,14 @@ pub async fn fetch_models(
                 .map_err(|e| format!("Failed to parse response: {e}"))?;
 
             let mut models: Vec<FetchedModel> = if let Some(data) = resp.data {
-                data.into_iter()
-                    .map(|m| FetchedModel {
-                        id: m.id,
-                        owned_by: m.owned_by,
-                    })
-                    .collect()
+                data.into_iter().map(fetched_from_entry).collect()
             } else {
                 catalog_model_ids(resp.models)
                     .into_iter()
-                    .map(|id| FetchedModel { id, owned_by: None })
+                    .map(|id| FetchedModel {
+                        id,
+                        ..FetchedModel::default()
+                    })
                     .collect()
             };
 
@@ -735,6 +874,62 @@ mod tests {
             ids,
             vec!["glm-4.7".to_string(), "openai-shaped".to_string()]
         );
+    }
+
+    #[test]
+    fn test_advertised_capabilities_are_kept() {
+        // OpenRouter 风格：能力字段齐全，应全部收下。
+        let json = r#"{"data":[
+            {"id":"or-model","context_length":200000,
+             "top_provider":{"max_completion_tokens":64000},
+             "architecture":{"input_modalities":["text","image"]},
+             "supported_parameters":["tools","reasoning"]},
+            {"id":"bare-model"}
+        ]}"#;
+        let resp: ModelsResponse = serde_json::from_str(json).unwrap();
+        let models: Vec<FetchedModel> = resp
+            .data
+            .unwrap()
+            .into_iter()
+            .map(fetched_from_entry)
+            .collect();
+        assert_eq!(models[0].context_window, Some(200_000));
+        assert_eq!(models[0].max_output_tokens, Some(64_000));
+        assert_eq!(
+            models[0].input_modalities.as_deref(),
+            Some(["image".to_string(), "text".to_string()].as_slice())
+        );
+        assert_eq!(models[0].reasoning, Some(true));
+        // 什么都没说的端点：一个字段都不能凭空造。
+        assert_eq!(models[1].context_window, None);
+        assert_eq!(models[1].max_output_tokens, None);
+        assert_eq!(models[1].input_modalities, None);
+        assert_eq!(models[1].reasoning, None);
+    }
+
+    #[test]
+    fn test_advertised_capabilities_reject_garbage() {
+        let json = r#"{"data":[{"id":"m",
+            "limit":{"context":0,"output":"32000"},
+            "input":["text","file","IMAGE"],
+            "capabilities":{"reasoning":false}}]}"#;
+        let resp: ModelsResponse = serde_json::from_str(json).unwrap();
+        let model = resp
+            .data
+            .unwrap()
+            .into_iter()
+            .map(fetched_from_entry)
+            .next()
+            .unwrap();
+        // 0 是「没填」而不是「零窗口」；字符串形式的数字照收。
+        assert_eq!(model.context_window, None);
+        assert_eq!(model.max_output_tokens, Some(32_000));
+        // 未知模态被丢掉、大小写归一、结果排序去重。
+        assert_eq!(
+            model.input_modalities.as_deref(),
+            Some(["image".to_string(), "text".to_string()].as_slice())
+        );
+        assert_eq!(model.reasoning, Some(false));
     }
 
     #[test]
