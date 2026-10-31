@@ -103,7 +103,7 @@
     "syncTo": "同步到",
     "syncToDsh": "DSH",
     "syncToCodex": "Codex",
-    "syncAllHint": "把 OpenCode 的全部供應商複製過去：",
+    "syncAllHint": "把 OpenCode 裡已新增的供應商複製過去：",
     "syncAllToDsh": "全部同步到 DSH",
     "syncAllToCodex": "全部同步到 Codex",
     "syncCreated": "新建 {{count}} 家",
@@ -5116,7 +5116,7 @@
       "description": "設定請求網址、API Key 和模型。現有的自訂供應商會自動顯示在這裡。"
     },
     "sharedProviders": "已加入的供應商會一起寫進 DeepSeek Harness 的 Web 和 Desktop 設定（以及已初始化的 headless、acp），在 DeepSeek Harness 裡選模型即可。",
-    "pinnedProvidersNote": "目前只讀取 {{profile}} 這份設定；切換供應商仍會寫入所有已初始化的 profile",
+    "pinnedProvidersNote": "只讀取並寫入 {{profile}} 這份設定；其他 profile 不會被改動",
     "sharedProvidersNote": "Web 和 Desktop 共用這份列表",
     "account": {
       "help": "DeepSeek 帳號以瀏覽器登入（OAuth），可以在這裡登入，也可以在 DeepSeek Harness 裡登入。登入資訊儲存在 $DSH_HOME/.credentials.yaml（預設 ~/.dsh/.credentials.yaml），DeepSeek Harness 的 Web 和 Desktop 共用：任一處登入或登出，兩端同時生效，執行中的 DeepSeek Harness 會自動重新讀取。帳號路由的模型用量在用量頁單獨顯示為「DeepSeek 帳號（OAuth）」。",

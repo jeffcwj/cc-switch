@@ -55,7 +55,14 @@ fn discovered_profiles() -> Vec<String> {
 
 /// Always prepare Web and Desktop: DSH's initProfile preserves an existing patch and supplies
 /// the remaining files on first launch. Optional runtime profiles are only written if present.
+///
+/// A pinned profile is the exception: it is the only one the user asked CC Switch to manage, so
+/// writing the others would overwrite whatever they keep there natively (and get in the way of
+/// removing a provider that diverged between profiles).
 pub(crate) fn target_paths() -> Vec<PathBuf> {
+    if let Some(name) = pinned_profile() {
+        return vec![profile_path(&name)];
+    }
     let mut paths: Vec<PathBuf> = TARGET_PROFILES
         .iter()
         .filter_map(|name| {

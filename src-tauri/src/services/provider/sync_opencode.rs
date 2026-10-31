@@ -66,11 +66,17 @@ pub fn sync_one(state: &AppState, key: &str, target: AppType) -> Result<SyncRepo
     Ok(report)
 }
 
-/// Sync every OpenCode provider into `target`. Conversion failures are reported per
-/// provider instead of aborting the run, so one Anthropic-only row cannot block the rest.
+/// Sync every OpenCode provider that is actually in use into `target`.
+///
+/// Only rows present in OpenCode's live config are copied: the panel also lists providers that
+/// were never added there, and turning those into DSH/Codex cards would surprise the user.
+/// Conversion failures are reported per provider instead of aborting the run, so one
+/// Anthropic-only row cannot block the rest.
 pub fn sync_all(state: &AppState, target: AppType) -> Result<SyncReport, AppError> {
+    let added = crate::opencode_config::get_providers()?;
     let sources: Vec<Provider> = ProviderService::list(state, AppType::OpenCode)?
         .into_iter()
+        .filter(|(key, _)| added.contains_key(key))
         .map(|(_, provider)| provider)
         .collect();
     let mut report = SyncReport::default();
