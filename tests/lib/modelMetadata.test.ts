@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  GPT_CONTEXT_WINDOW_CAP,
   resolveModelMetadata,
   type KnownModelMetadata,
   type PresetModelSource,
