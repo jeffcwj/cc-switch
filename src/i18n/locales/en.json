@@ -1165,7 +1165,8 @@
       "routing": "Local routing",
       "network": "Network",
       "data": "Data",
-      "about": "About"
+      "about": "About",
+      "modelOverrides": "Model overrides"
     },
     "appConfig": {
       "configDir": "Config directory"
@@ -1215,6 +1216,22 @@
         "invalidResponse": "Service returned invalid data",
         "unavailable": "Service could not provide data"
       }
+    },
+    "modelOverrides": {
+      "title": "Model overrides",
+      "help": "Pin default parameters for a single model. Filling model metadata uses these values first; anything left blank still comes from the endpoint preset and models.dev, so only fill what you want to change.",
+      "browse": "Browse catalog",
+      "search": "Add from models.dev",
+      "searchHint": "Filter by model id, name or provider. Once added, edit each field and the change saves itself.",
+      "searchPlaceholder": "e.g. gpt-5.6-sol",
+      "loading": "Reading the model catalog…",
+      "noMatch": "No matching model",
+      "empty": "No model is overridden yet.",
+      "remove": "Remove",
+      "contextWindow": "Context window",
+      "maxOutputTokens": "Max output",
+      "inputModalities": "Input modalities",
+      "reasoningEfforts": "Thinking levels"
     }
   },
   "apps": {
@@ -2022,7 +2039,8 @@
     "reasoningEffortOff": "Don't send",
     "reasoningEffortPassthrough": "Send as is",
     "directModeFormatInUse": "This card is in use in direct mode: saving it with this format makes requests fail. Switch to routing or Aggregation first.",
-    "directModeFormatSwitch": "This format doesn't work in direct mode; switch to routing or Aggregation to use this card."
+    "directModeFormatSwitch": "This format doesn't work in direct mode; switch to routing or Aggregation to use this card.",
+    "modelMetadataSourceOverride": "Your model override"
   },
   "copilot": {
     "automaticFormat": "Selected automatically by routing",

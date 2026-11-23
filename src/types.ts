@@ -571,6 +571,20 @@ export interface Settings {
   // Linux: "gnome-terminal" | "konsole" | "xfce4-terminal" | "alacritty" | "kitty" | "ghostty"
   preferredTerminal?: string;
 
+  // ===== 模型覆盖 =====
+  // 用户给单个模型定下的默认参数（设置 → 模型覆盖）。补全模型信息时先用这份，
+  // 缺的字段再问预设 / models.dev。键是归一化后的模型 id。
+  modelMetadataOverrides?: Record<
+    string,
+    {
+      contextWindow?: number;
+      maxOutputTokens?: number;
+      inputModalities?: string[];
+      reasoningEfforts?: string[];
+      reasoning?: boolean;
+    }
+  >;
+
   // ===== 本机自动迁移状态 =====
   localMigrations?: {
     codexThirdPartyHistoryProviderBucketV1?: {

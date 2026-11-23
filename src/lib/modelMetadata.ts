@@ -36,8 +36,20 @@ export interface KnownModelMetadata {
   };
 }
 
-/** 参数来自哪里：同地址预设，还是 models.dev。补全提示里告诉用户。 */
-export type ModelMetadataSource = "preset" | "models-dev";
+/** 参数来自哪里：用户自己填的覆盖、同地址预设，还是 models.dev。补全提示里告诉用户。 */
+export type ModelMetadataSource = "override" | "preset" | "models-dev";
+
+/**
+ * 用户给某个模型定下的默认值。只有写了的字段才算数，其余继续按预设 / models.dev 补。
+ * 存在设置里（设备级），补全模型信息时排在最前面。
+ */
+export interface ModelMetadataOverride {
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  inputModalities?: string[];
+  reasoningEfforts?: string[];
+  reasoning?: boolean;
+}
 
 export interface ResolvedModelMetadata extends KnownModelMetadata {
   /** 实际贡献了字段的来源，按优先级排序。 */
@@ -346,8 +358,46 @@ function fieldCount(metadata: KnownModelMetadata): number {
   return Object.values(metadata).filter((value) => value !== undefined).length;
 }
 
+/** 覆盖表的键按归一化后的模型 id 存，也认原样写法和纯小写写法。 */
+export function resolveModelOverride(
+  overrides: Readonly<Record<string, ModelMetadataOverride>> | undefined,
+  modelId: string,
+): KnownModelMetadata | null {
+  if (!overrides) return null;
+  const trimmed = modelId.trim();
+  const wanted = normalizeModelsDevModelId(trimmed);
+  const entry =
+    overrides[wanted] ??
+    overrides[trimmed] ??
+    overrides[trimmed.toLowerCase()] ??
+    // 手写的键可能带着 vendor/ 前缀或大小写，按同一套归一化再扫一遍。
+    Object.entries(overrides).find(
+      ([key]) => normalizeModelsDevModelId(key) === wanted,
+    )?.[1];
+  if (!entry) return null;
+
+  const metadata: KnownModelMetadata = {};
+  if (entry.contextWindow !== undefined) {
+    metadata.contextWindow = entry.contextWindow;
+  }
+  if (entry.maxOutputTokens !== undefined) {
+    metadata.maxOutputTokens = entry.maxOutputTokens;
+  }
+  if (entry.inputModalities && entry.inputModalities.length > 0) {
+    metadata.inputModalities = [...entry.inputModalities];
+  }
+  if (entry.reasoningEfforts && entry.reasoningEfforts.length > 0) {
+    metadata.reasoningEfforts = [...entry.reasoningEfforts];
+  }
+  if (entry.reasoning !== undefined) {
+    metadata.reasoning = entry.reasoning;
+  }
+  return metadata;
+}
+
 /**
  * 查一个模型的已知参数。逐字段按优先级取值：
+ * 0. 用户自己填的覆盖（设置 → 模型覆盖），认得出就先用它，缺的字段再往下问；
  * 1. 同地址预设里手工核实过的那一行（同一个模型各家部署的窗口差很多，
  *    比如 glm-5.2 从 200K 到 1M 都有，预设写的就是这一家的真实值）；
  * 2. models.dev 里按地址认出的同一家供应商；
@@ -363,6 +413,8 @@ export function resolveModelMetadata(
     baseUrl: string;
     presets?: readonly PresetModelSource[];
     modelsDev?: ModelsDevResponse;
+    /** 用户在设置里填的模型覆盖，键是归一化后的模型 id。 */
+    overrides?: Readonly<Record<string, ModelMetadataOverride>>;
   },
 ): ResolvedModelMetadata | null {
   const id = modelId.trim();
@@ -377,6 +429,9 @@ export function resolveModelMetadata(
       sources.push(source);
     }
   };
+
+  const override = resolveModelOverride(options.overrides, id);
+  if (override) add("override", override);
 
   for (const preset of matchEndpoint(
     options.baseUrl,

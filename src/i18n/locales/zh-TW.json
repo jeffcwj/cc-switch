@@ -1165,7 +1165,8 @@
       "routing": "本地路由",
       "network": "網路",
       "data": "資料",
-      "about": "關於"
+      "about": "關於",
+      "modelOverrides": "模型覆蓋"
     },
     "appConfig": {
       "configDir": "設定目錄"
@@ -1215,6 +1216,22 @@
         "invalidResponse": "服務回傳無效資料",
         "unavailable": "服務無法提供資料"
       }
+    },
+    "modelOverrides": {
+      "title": "模型覆蓋",
+      "help": "給單一模型定下預設參數。補全模型資訊時先用這裡填的值，沒填的欄位繼續按同網址預設與 models.dev 補，所以只填想改的那一項就好。",
+      "browse": "瀏覽模型庫",
+      "search": "從 models.dev 新增",
+      "searchHint": "輸入模型 id、名稱或供應商篩選；新增後可以逐項修改，改完自動儲存。",
+      "searchPlaceholder": "例如 gpt-5.6-sol",
+      "loading": "正在讀取模型庫…",
+      "noMatch": "沒有符合的模型",
+      "empty": "還沒有覆蓋任何模型。",
+      "remove": "刪除",
+      "contextWindow": "上下文視窗",
+      "maxOutputTokens": "最大輸出",
+      "inputModalities": "輸入模態",
+      "reasoningEfforts": "思考檔位"
     }
   },
   "apps": {
@@ -2022,7 +2039,8 @@
     "reasoningEffortOff": "不送出",
     "reasoningEffortPassthrough": "原樣送出",
     "directModeFormatInUse": "這張卡正在直連使用：改成這種格式後儲存，請求會失敗。請先切到路由或聚合。",
-    "directModeFormatSwitch": "直連模式下用不了這種格式，切到路由或聚合後才能用這張卡。"
+    "directModeFormatSwitch": "直連模式下用不了這種格式，切到路由或聚合後才能用這張卡。",
+    "modelMetadataSourceOverride": "你填的模型覆蓋"
   },
   "copilot": {
     "automaticFormat": "由路由依模型自動選擇",

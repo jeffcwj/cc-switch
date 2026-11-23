@@ -1101,12 +1101,12 @@ pub async fn import_opencode_providers_from_live(
     .await
 }
 
-/// Copy one OpenCode provider into the DSH or Codex list. Clicking the provider card's
-/// "同步到" goes here; the key is the OpenCode provider key (its row id).
+/// Copy one OpenCode provider into the DSH, Codex or Claude Desktop list. Clicking the
+/// provider card's "同步到" goes here; the key is the OpenCode provider key (its row id).
 #[tauri::command]
 pub async fn sync_opencode_provider(
     app_handle: tauri::AppHandle,
-    providerId: String,
+    #[allow(non_snake_case)] providerId: String,
     target: String,
 ) -> Result<crate::services::provider::sync_opencode::SyncReport, String> {
     let target = crate::services::provider::sync_opencode::target_app(&target)

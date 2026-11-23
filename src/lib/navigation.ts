@@ -30,6 +30,7 @@ export type View = AppPage | GlobalPage | "settings";
 export type SettingsSection =
   | "general"
   | "appConfig"
+  | "modelOverrides"
   | "routing"
   | "network"
   | "data"
@@ -38,6 +39,7 @@ export type SettingsSection =
 export const SETTINGS_SECTIONS: SettingsSection[] = [
   "general",
   "appConfig",
+  "modelOverrides",
   "routing",
   "network",
   "data",

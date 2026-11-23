@@ -289,7 +289,20 @@
     "formSubtitleStack": "{{app}} (Aggregationsmodus)",
     "editCurrentNoticeFile": "Dies ist der verwendete Anbieter. Beim Speichern wird er sofort geschrieben nach",
     "editCurrentNoticeFileEnd": "; die nächste Anfrage verwendet ihn.",
-    "editCurrentNotice": "Dies ist der verwendete Anbieter. Das Speichern wirkt sofort; die nächste Anfrage verwendet die neuen Einstellungen."
+    "editCurrentNotice": "Dies ist der verwendete Anbieter. Das Speichern wirkt sofort; die nächste Anfrage verwendet die neuen Einstellungen.",
+    "syncTo": "Synchronisieren",
+    "syncToDsh": "DeepSeek Harness",
+    "syncToCodex": "Codex",
+    "syncToClaudeDesktop": "Claude Desktop",
+    "syncAllHint": "Die in OpenCode hinzugefügten Anbieter übernehmen:",
+    "syncAllToDsh": "Alle zu DSH synchronisieren",
+    "syncAllToCodex": "Alle zu Codex synchronisieren",
+    "syncAllToClaudeDesktop": "Alle zu Claude Desktop synchronisieren",
+    "syncCreated": "{{count}} angelegt",
+    "syncUpdated": "{{count}} aktualisiert",
+    "syncSkipped": "{{count}} übersprungen: {{names}}",
+    "syncNothing": "Nichts zu synchronisieren — bereits aktuell",
+    "syncFailed": "Synchronisierung fehlgeschlagen"
   },
   "claudeCode": {
     "needsRouting": "Routing erforderlich"
@@ -1149,7 +1162,8 @@
       "routing": "Lokales Routing",
       "network": "Netzwerk",
       "data": "Daten",
-      "about": "Über"
+      "about": "Über",
+      "modelOverrides": "Modell-Überschreibungen"
     },
     "appConfig": {
       "configDir": "Konfigurationsverzeichnis"
@@ -1199,7 +1213,26 @@
         "invalidResponse": "Der Dienst hat ungültige Daten zurückgegeben",
         "unavailable": "Der Dienst konnte keine Daten liefern"
       }
-    }
+    },
+    "modelOverrides": {
+      "title": "Modell-Überschreibungen",
+      "help": "Standardparameter für ein einzelnes Modell festlegen. Beim Ergänzen der Modellinformationen gelten zuerst diese Werte; leere Felder kommen weiterhin aus dem Preset des Endpunkts und von models.dev.",
+      "browse": "Katalog durchsuchen",
+      "search": "Aus models.dev hinzufügen",
+      "searchHint": "Nach Modell-ID, Name oder Anbieter filtern. Nach dem Hinzufügen lässt sich jedes Feld bearbeiten; Änderungen werden automatisch gespeichert.",
+      "searchPlaceholder": "z. B. gpt-5.6-sol",
+      "loading": "Modellkatalog wird gelesen…",
+      "noMatch": "Kein passendes Modell",
+      "empty": "Noch kein Modell überschrieben.",
+      "remove": "Entfernen",
+      "contextWindow": "Kontextfenster",
+      "maxOutputTokens": "Maximale Ausgabe",
+      "inputModalities": "Eingabemodalitäten",
+      "reasoningEfforts": "Denkstufen"
+    },
+    "dshProfile": "Profil",
+    "dshProfileDescription": "Welches DSH-Profil CC Switch liest und schreibt; danach bleiben die anderen Profile unberührt",
+    "dshProfileAuto": "Automatisch (web → desktop)"
   },
   "apps": {
     "claude": "Claude",
@@ -2006,7 +2039,8 @@
     "reasoningEffortOff": "Nicht senden",
     "reasoningEffortPassthrough": "Unverändert senden",
     "directModeFormatInUse": "Diese Karte wird im Direktmodus verwendet: Wenn Sie sie mit diesem Format speichern, schlagen Anfragen fehl. Wechseln Sie zuerst zu Routing oder Aggregation.",
-    "directModeFormatSwitch": "Dieses Format funktioniert im Direktmodus nicht; wechseln Sie zu Routing oder Aggregation, um diese Karte zu verwenden."
+    "directModeFormatSwitch": "Dieses Format funktioniert im Direktmodus nicht; wechseln Sie zu Routing oder Aggregation, um diese Karte zu verwenden.",
+    "modelMetadataSourceOverride": "Deine Modell-Überschreibung"
   },
   "copilot": {
     "automaticFormat": "Wird automatisch vom Routing gewählt",
@@ -2328,7 +2362,9 @@
     "modelExtraFieldKeyPlaceholder": "variants",
     "sdkOptions": "SDK-Optionen",
     "modelOptionKeyPlaceholder": "provider",
-    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
+    "refreshModelMetadata": "Modellinfos aktualisieren",
+    "refreshModelMetadataHint": "Modellnamen erneut mit models.dev abgleichen, um Kontextfenster, Modalitäten und Denkstufen zu füllen"
   },
   "providerPreset": {
     "label": "Anbieter-Vorlage",
@@ -5422,7 +5458,8 @@
       "editDisabled": "DeepSeek Harness stellt die Modelle dieses Kontos selbst bereit; es gibt nichts zu bearbeiten.",
       "managedHint": "Dieses Konto wird in der Kontoverwaltung verwaltet; die Karte verschwindet nach der Abmeldung."
     },
-    "deleteSessionHint": "Löschen Sie diese Sitzung in DeepSeek Harness, damit der Verlauf konsistent bleibt."
+    "deleteSessionHint": "Löschen Sie diese Sitzung in DeepSeek Harness, damit der Verlauf konsistent bleibt.",
+    "pinnedProvidersNote": "Liest und schreibt nur {{profile}}; andere Profile bleiben unberührt"
   },
   "autoUpdate": {
     "toggle": "Updates automatisch herunterladen",

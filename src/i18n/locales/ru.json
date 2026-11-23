@@ -289,7 +289,20 @@
     "formSubtitleStack": "{{app}} (режим агрегации)",
     "editCurrentNoticeFile": "Это используемый провайдер. При сохранении изменения записываются в",
     "editCurrentNoticeFileEnd": " сразу; следующий запрос уже использует их.",
-    "editCurrentNotice": "Это используемый провайдер. Сохранение вступает в силу сразу: следующий запрос использует новые настройки."
+    "editCurrentNotice": "Это используемый провайдер. Сохранение вступает в силу сразу: следующий запрос использует новые настройки.",
+    "syncTo": "Синхронизировать",
+    "syncToDsh": "DeepSeek Harness",
+    "syncToCodex": "Codex",
+    "syncToClaudeDesktop": "Claude Desktop",
+    "syncAllHint": "Скопировать провайдеров, уже добавленных в OpenCode:",
+    "syncAllToDsh": "Синхронизировать все в DSH",
+    "syncAllToCodex": "Синхронизировать все в Codex",
+    "syncAllToClaudeDesktop": "Синхронизировать все в Claude Desktop",
+    "syncCreated": "создано: {{count}}",
+    "syncUpdated": "обновлено: {{count}}",
+    "syncSkipped": "пропущено: {{count}} ({{names}})",
+    "syncNothing": "Синхронизировать нечего — всё уже актуально",
+    "syncFailed": "Не удалось синхронизировать"
   },
   "claudeCode": {
     "needsRouting": "Требуется маршрутизация"
@@ -1149,7 +1162,8 @@
       "routing": "Локальная маршрутизация",
       "network": "Сеть",
       "data": "Данные",
-      "about": "О программе"
+      "about": "О программе",
+      "modelOverrides": "Переопределения моделей"
     },
     "appConfig": {
       "configDir": "Каталог конфигурации"
@@ -1199,7 +1213,26 @@
         "invalidResponse": "Сервис вернул неверные данные",
         "unavailable": "Сервис не смог предоставить данные"
       }
-    }
+    },
+    "modelOverrides": {
+      "title": "Переопределения моделей",
+      "help": "Задать параметры по умолчанию для отдельной модели. При заполнении данных модели сначала берутся значения отсюда, а пустые поля — из пресета того же адреса и models.dev.",
+      "browse": "Открыть каталог",
+      "search": "Добавить из models.dev",
+      "searchHint": "Фильтр по id модели, имени или провайдеру. После добавления каждое поле можно изменить, изменения сохраняются автоматически.",
+      "searchPlaceholder": "напр. gpt-5.6-sol",
+      "loading": "Чтение каталога моделей…",
+      "noMatch": "Подходящих моделей нет",
+      "empty": "Пока ни одна модель не переопределена.",
+      "remove": "Удалить",
+      "contextWindow": "Контекстное окно",
+      "maxOutputTokens": "Максимум вывода",
+      "inputModalities": "Входные модальности",
+      "reasoningEfforts": "Уровни размышления"
+    },
+    "dshProfile": "Профиль",
+    "dshProfileDescription": "Какой профиль DSH читает и записывает CC Switch; после выбора остальные профили не трогаются",
+    "dshProfileAuto": "Авто (web → desktop)"
   },
   "apps": {
     "claude": "Claude",
@@ -2006,7 +2039,8 @@
     "reasoningEffortOff": "Не отправлять",
     "reasoningEffortPassthrough": "Отправлять как есть",
     "directModeFormatInUse": "Эта карточка используется в режиме прямого подключения: если сохранить её с этим форматом, запросы будут завершаться ошибкой. Сначала переключитесь на маршрутизацию или агрегацию.",
-    "directModeFormatSwitch": "Этот формат не работает в режиме прямого подключения; чтобы использовать эту карточку, переключитесь на маршрутизацию или агрегацию."
+    "directModeFormatSwitch": "Этот формат не работает в режиме прямого подключения; чтобы использовать эту карточку, переключитесь на маршрутизацию или агрегацию.",
+    "modelMetadataSourceOverride": "Ваше переопределение модели"
   },
   "copilot": {
     "automaticFormat": "Выбирается маршрутизацией автоматически",
@@ -2328,7 +2362,9 @@
     "modelExtraFieldKeyPlaceholder": "variants",
     "sdkOptions": "Параметры SDK",
     "modelOptionKeyPlaceholder": "provider",
-    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
+    "refreshModelMetadata": "Обновить данные модели",
+    "refreshModelMetadataHint": "Снова сопоставить с models.dev по имени модели, чтобы заполнить контекстное окно, модальности и уровни размышления"
   },
   "providerPreset": {
     "label": "Пресет провайдера",
@@ -5420,7 +5456,8 @@
       "editDisabled": "DeepSeek Harness сам предоставляет модели этого аккаунта; редактировать здесь нечего.",
       "managedHint": "Этот аккаунт управляется в разделе «Аккаунты»; карточка исчезнет после выхода."
     },
-    "deleteSessionHint": "Удалите эту сессию в DeepSeek Harness, чтобы её история оставалась согласованной."
+    "deleteSessionHint": "Удалите эту сессию в DeepSeek Harness, чтобы её история оставалась согласованной.",
+    "pinnedProvidersNote": "Читается и пишется только {{profile}}; остальные профили не трогаются"
   },
   "autoUpdate": {
     "toggle": "Автоматически загружать обновления",

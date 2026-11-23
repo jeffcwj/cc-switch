@@ -289,7 +289,20 @@
     "editCurrentNoticeFileEnd": "에 즉시 저장되며, 다음 요청부터 적용됩니다.",
     "editCurrentNotice": "사용 중인 공급자입니다. 저장하면 즉시 적용되며, 다음 요청부터 새 설정을 사용합니다.",
     "liveConfigReadFailed": "{{app}} 설정 파일을 읽을 수 없습니다",
-    "liveConfigReadFailedHint": "설정 파일의 문제를 해결하기 전까지는 공급자를 추가하거나 제거할 수 없습니다."
+    "liveConfigReadFailedHint": "설정 파일의 문제를 해결하기 전까지는 공급자를 추가하거나 제거할 수 없습니다.",
+    "syncTo": "동기화",
+    "syncToDsh": "DeepSeek Harness",
+    "syncToCodex": "Codex",
+    "syncToClaudeDesktop": "Claude Desktop",
+    "syncAllHint": "OpenCode에 이미 추가한 공급자를 복사합니다:",
+    "syncAllToDsh": "모두 DSH로 동기화",
+    "syncAllToCodex": "모두 Codex로 동기화",
+    "syncAllToClaudeDesktop": "모두 Claude Desktop으로 동기화",
+    "syncCreated": "{{count}}개 추가",
+    "syncUpdated": "{{count}}개 갱신",
+    "syncSkipped": "{{count}}개 건너뜀: {{names}}",
+    "syncNothing": "동기화할 공급자가 없습니다",
+    "syncFailed": "동기화에 실패했습니다"
   },
   "claudeCode": {
     "needsRouting": "라우팅 필요"
@@ -1149,7 +1162,8 @@
       "routing": "로컬 라우팅",
       "network": "네트워크",
       "data": "데이터",
-      "about": "정보"
+      "about": "정보",
+      "modelOverrides": "모델 재정의"
     },
     "appConfig": {
       "configDir": "설정 디렉터리"
@@ -1199,7 +1213,26 @@
         "invalidResponse": "서비스가 잘못된 데이터를 반환했습니다",
         "unavailable": "서비스에서 데이터를 제공할 수 없습니다"
       }
-    }
+    },
+    "modelOverrides": {
+      "title": "모델 재정의",
+      "help": "모델 하나의 기본 파라미터를 고정합니다. 모델 정보를 채울 때 여기 적은 값이 먼저 쓰이고, 비어 있는 항목은 같은 주소의 프리셋과 models.dev에서 채웁니다.",
+      "browse": "카탈로그 보기",
+      "search": "models.dev에서 추가",
+      "searchHint": "모델 id, 이름, 공급자로 걸러 봅니다. 추가한 뒤에는 항목별로 고칠 수 있고 변경은 자동 저장됩니다.",
+      "searchPlaceholder": "예: gpt-5.6-sol",
+      "loading": "모델 카탈로그를 읽는 중…",
+      "noMatch": "일치하는 모델이 없습니다",
+      "empty": "아직 재정의한 모델이 없습니다.",
+      "remove": "삭제",
+      "contextWindow": "컨텍스트 창",
+      "maxOutputTokens": "최대 출력",
+      "inputModalities": "입력 모달리티",
+      "reasoningEfforts": "사고 단계"
+    },
+    "dshProfile": "프로필",
+    "dshProfileDescription": "CC Switch가 읽고 쓰는 DSH 프로필입니다. 지정하면 다른 프로필은 건드리지 않습니다",
+    "dshProfileAuto": "자동 (web → desktop)"
   },
   "apps": {
     "claude": "Claude",
@@ -2006,7 +2039,8 @@
     "reasoningEffortOff": "전송하지 않음",
     "reasoningEffortPassthrough": "그대로 전송",
     "directModeFormatInUse": "이 카드는 현재 직접 연결로 사용 중입니다. 이 형식으로 저장하면 요청이 실패합니다. 먼저 라우팅 또는 통합 모드로 전환하세요.",
-    "directModeFormatSwitch": "이 형식은 직접 연결 모드에서 사용할 수 없습니다. 이 카드를 사용하려면 라우팅 또는 통합 모드로 전환하세요."
+    "directModeFormatSwitch": "이 형식은 직접 연결 모드에서 사용할 수 없습니다. 이 카드를 사용하려면 라우팅 또는 통합 모드로 전환하세요.",
+    "modelMetadataSourceOverride": "직접 지정한 모델 재정의"
   },
   "copilot": {
     "automaticFormat": "모델에 따라 자동 선택",
@@ -2328,7 +2362,9 @@
     "modelExtraFieldKeyPlaceholder": "variants",
     "sdkOptions": "SDK 옵션",
     "modelOptionKeyPlaceholder": "provider",
-    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
+    "refreshModelMetadata": "모델 정보 갱신",
+    "refreshModelMetadataHint": "모델 이름으로 models.dev를 다시 조회해 컨텍스트 창, 모달리티, 사고 단계를 채웁니다"
   },
   "providerPreset": {
     "label": "공급자 프리셋",
@@ -5422,7 +5458,8 @@
       "expiredChip": "로그인 만료",
       "editDisabled": "DeepSeek Harness가 이 계정으로 사용할 수 있는 모델을 자동으로 제공하므로 편집할 필요가 없습니다.",
       "managedHint": "이 계정은 인증 센터에서 관리합니다. 로그아웃하면 이 카드가 사라집니다."
-    }
+    },
+    "pinnedProvidersNote": "{{profile}}만 읽고 씁니다. 다른 프로필은 그대로 둡니다"
   },
   "autoUpdate": {
     "toggle": "업데이트 자동 다운로드",

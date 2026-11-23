@@ -475,6 +475,38 @@ pub struct UsageDisplaySettings {
 /// 由 `tray::tests::languages_match_shared_fixture` 生成的 `tests/config/languages.json` 比对。
 pub(crate) const LANGUAGES: &[&str] = &["zh", "zh-TW", "en", "de", "ja", "ko", "ru", "tr"];
 
+/// 用户给单个模型定下的默认参数。只有写了的字段才算数，没写的继续问 models.dev。
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelMetadataOverride {
+    /// 上下文窗口（token 数）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u64>,
+    /// 单次最大输出 token 数
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<u64>,
+    /// 能吃的输入模态（text / image / …）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_modalities: Option<Vec<String>>,
+    /// 思考档位（off / minimal / low / medium / high / xhigh / max）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_efforts: Option<Vec<String>>,
+    /// 是不是推理模型
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<bool>,
+}
+
+impl ModelMetadataOverride {
+    /// 全空的行没有意义，保存前丢掉。
+    fn is_empty(&self) -> bool {
+        self.context_window.is_none()
+            && self.max_output_tokens.is_none()
+            && self.input_modalities.is_none()
+            && self.reasoning_efforts.is_none()
+            && self.reasoning.is_none()
+    }
+}
+
 /// 应用设置结构
 ///
 /// 存储设备级别设置，保存在本地 `~/.cc-switch/settings.json`，不随数据库同步。
@@ -655,6 +687,15 @@ pub struct AppSettings {
     )]
     pub dsh_profile: Option<String>,
 
+    /// 用户给单个模型定下的默认参数：补全模型信息时先用这份，缺的字段再问
+    /// models.dev 与预设。键是模型 id（大小写、`vendor/` 前缀都按归一化后的值匹配）。
+    #[serde(
+        default,
+        rename = "modelMetadataOverrides",
+        skip_serializing_if = "BTreeMap::is_empty"
+    )]
+    pub model_metadata_overrides: BTreeMap<String, ModelMetadataOverride>,
+
     // ===== 当前供应商 ID（设备级）=====
     /// 当前 Claude 供应商 ID（本地存储，优先于数据库 is_current）
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -808,6 +849,7 @@ impl Default for AppSettings {
             omp_config_dir: None,
             dsh_config_dir: None,
             dsh_profile: None,
+            model_metadata_overrides: BTreeMap::new(),
             current_provider_claude: None,
             current_provider_claude_desktop: None,
             current_provider_codex: None,
@@ -895,6 +937,38 @@ impl AppSettings {
                 self.webdav_sync = None;
             }
         }
+
+        self.model_metadata_overrides = std::mem::take(&mut self.model_metadata_overrides)
+            .into_iter()
+            .filter_map(|(model, entry)| {
+                let model = model.trim().to_lowercase();
+                if model.is_empty() {
+                    return None;
+                }
+                let mut entry = entry;
+                entry.input_modalities = entry.input_modalities.map(|values| {
+                    let mut values: Vec<String> = values
+                        .into_iter()
+                        .map(|value| value.trim().to_lowercase())
+                        .filter(|value| !value.is_empty())
+                        .collect();
+                    values.sort();
+                    values.dedup();
+                    values
+                });
+                entry.reasoning_efforts = entry.reasoning_efforts.map(|values| {
+                    let mut values: Vec<String> = values
+                        .into_iter()
+                        .map(|value| value.trim().to_lowercase())
+                        .filter(|value| !value.is_empty())
+                        .collect();
+                    values.sort();
+                    values.dedup();
+                    values
+                });
+                (!entry.is_empty()).then_some((model, entry))
+            })
+            .collect();
 
         if let Some(s3) = &mut self.s3_sync {
             s3.normalize();
@@ -1343,15 +1417,6 @@ pub fn get_override_dir(app: &AppType) -> Option<PathBuf> {
         | AppType::WorkBuddy => return None,
     };
     dir.as_deref().map(resolve_override_path)
-}
-
-/// DeepSeek Harness 的数据目录覆盖（等价于给 DSH 设 `DSH_HOME`）。
-pub fn get_dsh_override_dir() -> Option<PathBuf> {
-    let settings = settings_store().read().ok()?;
-    settings
-        .dsh_config_dir
-        .as_ref()
-        .map(|path| resolve_override_path(path))
 }
 
 /// 用户在设置里指定的 DSH profile 名（`None`＝自动选择 `web` → `desktop` → 首个已存在的）。

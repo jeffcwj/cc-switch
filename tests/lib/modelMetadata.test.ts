@@ -487,3 +487,44 @@ describe("resolveModelMetadata", () => {
     expect(resolve("o9-big", "https://api.openai.com/v1")).toBe(1050000);
   });
 });
+
+describe("resolveModelMetadata with user overrides", () => {
+  const overrides = {
+    // 用户只改窗口和档位，最大输出留空继续走 models.dev。
+    "vendor/glm-5.3": { contextWindow: 300000, reasoningEfforts: ["low"] },
+  };
+
+  it("overrides only the fields the user filled", () => {
+    const resolved = resolveModelMetadata("glm-5.3", {
+      baseUrl: "https://opencode.ai/zen/go/v1/",
+      modelsDev,
+      overrides,
+    });
+    expect(resolved?.contextWindow).toBe(300000);
+    expect(resolved?.reasoningEfforts).toEqual(["low"]);
+    expect(resolved?.maxOutputTokens).toBe(131072);
+  });
+
+  it("matches override keys the same way it matches model ids", () => {
+    const resolved = resolveModelMetadata("GLM-5.3", {
+      baseUrl: "https://relay.example.com/v1",
+      modelsDev,
+      overrides,
+    });
+    expect(resolved?.contextWindow).toBe(300000);
+  });
+
+  it("beats a preset that knows the endpoint", () => {
+    const resolved = resolveModelMetadata("glm-5.3", {
+      baseUrl: "https://relay.example.com/v1",
+      presets: [
+        preset("https://relay.example.com/v1", {
+          "glm-5.3": { contextWindow: 1000000 },
+        }),
+      ],
+      modelsDev,
+      overrides,
+    });
+    expect(resolved?.contextWindow).toBe(300000);
+  });
+});

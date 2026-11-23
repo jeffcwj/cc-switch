@@ -1165,7 +1165,8 @@
       "routing": "Yerel yönlendirme",
       "network": "Ağ",
       "data": "Veri",
-      "about": "Hakkında"
+      "about": "Hakkında",
+      "modelOverrides": "Model geçersiz kılmaları"
     },
     "appConfig": {
       "configDir": "Yapılandırma dizini"
@@ -1215,6 +1216,22 @@
         "invalidResponse": "Hizmet geçersiz veri döndürdü",
         "unavailable": "Hizmet veri sağlayamadı"
       }
+    },
+    "modelOverrides": {
+      "title": "Model geçersiz kılmaları",
+      "help": "Tek bir model için varsayılan parametreleri sabitleyin. Model bilgisi doldurulurken önce buradaki değerler kullanılır; boş bırakılan alanlar uç nokta ön ayarından ve models.dev'den gelir.",
+      "browse": "Kataloğa göz at",
+      "search": "models.dev'den ekle",
+      "searchHint": "Model kimliği, adı veya sağlayıcıya göre filtreleyin. Eklendikten sonra her alanı düzenleyebilirsiniz; değişiklikler otomatik kaydedilir.",
+      "searchPlaceholder": "ör. gpt-5.6-sol",
+      "loading": "Model kataloğu okunuyor…",
+      "noMatch": "Eşleşen model yok",
+      "empty": "Henüz hiçbir model geçersiz kılınmadı.",
+      "remove": "Kaldır",
+      "contextWindow": "Bağlam penceresi",
+      "maxOutputTokens": "Maksimum çıktı",
+      "inputModalities": "Girdi kipleri",
+      "reasoningEfforts": "Düşünme seviyeleri"
     }
   },
   "apps": {
@@ -1951,7 +1968,8 @@
     "reasoningEffortOff": "Gönderme",
     "reasoningEffortPassthrough": "Olduğu gibi gönder",
     "directModeFormatInUse": "Bu kart doğrudan modda kullanılıyor: bu formatta kaydedilmesi isteklerin başarısız olmasına neden olur. Önce yönlendirmeye veya Birleştirme'ya geçin.",
-    "directModeFormatSwitch": "Bu biçim doğrudan modda çalışmaz; Bu kartı kullanmak için yönlendirmeye veya Birleştirme'ya geçin."
+    "directModeFormatSwitch": "Bu biçim doğrudan modda çalışmaz; Bu kartı kullanmak için yönlendirmeye veya Birleştirme'ya geçin.",
+    "modelMetadataSourceOverride": "Model geçersiz kılmanız"
   },
   "copilot": {
     "automaticFormat": "Yönlendirme tarafından otomatik seçilir",

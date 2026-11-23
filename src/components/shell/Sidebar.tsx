@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChevronsLeft,
   ChevronsRight,
+  Cpu,
   Database,
   Folder,
   Globe,
@@ -699,6 +700,7 @@ function NavItem({
 const SETTINGS_ITEMS: { section: SettingsSection; icon: IconComponent }[] = [
   { section: "general", icon: SlidersHorizontal },
   { section: "appConfig", icon: Folder },
+  { section: "modelOverrides", icon: Cpu },
   { section: "routing", icon: Route },
   { section: "network", icon: Globe },
   { section: "data", icon: Database },

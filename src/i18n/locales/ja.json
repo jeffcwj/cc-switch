@@ -1165,7 +1165,8 @@
       "routing": "ローカルルーティング",
       "network": "ネットワーク",
       "data": "データ",
-      "about": "情報"
+      "about": "情報",
+      "modelOverrides": "モデル上書き"
     },
     "appConfig": {
       "configDir": "設定ディレクトリ"
@@ -1215,6 +1216,22 @@
         "invalidResponse": "サービスが無効なデータを返しました",
         "unavailable": "サービスからデータを取得できません"
       }
+    },
+    "modelOverrides": {
+      "title": "モデル上書き",
+      "help": "1 つのモデルの既定パラメータを決めます。モデル情報の補完ではここに書いた値が優先され、空欄の項目は同じ接続先のプリセットと models.dev から補います。",
+      "browse": "カタログを見る",
+      "search": "models.dev から追加",
+      "searchHint": "モデル id・名前・プロバイダーで絞り込みます。追加後は各項目を編集でき、変更は自動保存されます。",
+      "searchPlaceholder": "例: gpt-5.6-sol",
+      "loading": "モデルカタログを読み込み中…",
+      "noMatch": "一致するモデルがありません",
+      "empty": "まだどのモデルも上書きしていません。",
+      "remove": "削除",
+      "contextWindow": "コンテキストウィンドウ",
+      "maxOutputTokens": "最大出力",
+      "inputModalities": "入力モダリティ",
+      "reasoningEfforts": "思考レベル"
     }
   },
   "apps": {
@@ -2022,7 +2039,8 @@
     "reasoningEffortOff": "送信しない",
     "reasoningEffortPassthrough": "そのまま送信",
     "directModeFormatInUse": "このカードは直結で使用中です。この形式で保存するとリクエストが失敗します。先にルーティングか集約に切り替えてください。",
-    "directModeFormatSwitch": "この形式は直結モードでは使えません。ルーティングか集約に切り替えるとこのカードを使えます。"
+    "directModeFormatSwitch": "この形式は直結モードでは使えません。ルーティングか集約に切り替えるとこのカードを使えます。",
+    "modelMetadataSourceOverride": "あなたのモデル上書き"
   },
   "copilot": {
     "automaticFormat": "モデルに応じてルーティングが自動選択",

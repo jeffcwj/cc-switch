@@ -1165,7 +1165,8 @@
       "routing": "本地路由",
       "network": "网络",
       "data": "数据",
-      "about": "关于"
+      "about": "关于",
+      "modelOverrides": "模型覆盖"
     },
     "appConfig": {
       "configDir": "配置目录"
@@ -1215,6 +1216,22 @@
         "invalidResponse": "服务返回无效数据",
         "unavailable": "服务无法提供数据"
       }
+    },
+    "modelOverrides": {
+      "title": "模型覆盖",
+      "help": "给单个模型定下默认参数。补全模型信息时先用这里填的值，没填的字段继续按同地址预设和 models.dev 补，所以只填想改的那一项就行。",
+      "browse": "浏览模型库",
+      "search": "从 models.dev 添加",
+      "searchHint": "输入模型 id、名字或供应商筛选；添加后可以逐项改，改完自动保存。",
+      "searchPlaceholder": "例如 gpt-5.6-sol",
+      "loading": "正在读取模型库…",
+      "noMatch": "没有匹配的模型",
+      "empty": "还没有覆盖任何模型。",
+      "remove": "删除",
+      "contextWindow": "上下文窗口",
+      "maxOutputTokens": "最大输出",
+      "inputModalities": "输入模态",
+      "reasoningEfforts": "思考档位"
     }
   },
   "apps": {
@@ -2022,7 +2039,8 @@
     "reasoningEffortOff": "不发送",
     "reasoningEffortPassthrough": "原样发送",
     "directModeFormatInUse": "这张卡正在直连使用：改成这种格式后保存，请求会失败。请先切到路由或聚合。",
-    "directModeFormatSwitch": "直连模式下用不了这种格式，切到路由或聚合后才能用这张卡。"
+    "directModeFormatSwitch": "直连模式下用不了这种格式，切到路由或聚合后才能用这张卡。",
+    "modelMetadataSourceOverride": "你填的模型覆盖"
   },
   "copilot": {
     "automaticFormat": "由路由按模型自动选择",

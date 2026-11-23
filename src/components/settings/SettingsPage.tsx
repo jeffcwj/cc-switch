@@ -8,6 +8,7 @@ import {
   type ComponentType,
 } from "react";
 import {
+  Cpu,
   Database,
   Folder,
   FolderOpen,
@@ -43,6 +44,7 @@ import { IpDiagnostics } from "@/components/settings/IpDiagnostics";
 import { LogConfigPanel } from "@/components/settings/LogConfigPanel";
 import { GeneralSection } from "@/components/settings/sections/GeneralSection";
 import { AppConfigSection } from "@/components/settings/sections/AppConfigSection";
+import { ModelOverridesSection } from "@/components/settings/sections/ModelOverridesSection";
 import {
   SettingsBlock,
   SettingsBody,
@@ -60,6 +62,7 @@ const SECTION_ICON: Record<
 > = {
   general: SlidersHorizontal,
   appConfig: Folder,
+  modelOverrides: Cpu,
   routing: Route,
   network: Globe,
   data: Database,
@@ -389,6 +392,13 @@ export function SettingsPage({
             onBrowseDirectory={browseDirectory}
             onResetDirectory={resetDirectory}
             onSaveDirectories={handleSave}
+          />
+        );
+      case "modelOverrides":
+        return (
+          <ModelOverridesSection
+            settings={settings}
+            onAutoSave={handleAutoSave}
           />
         );
       case "routing":

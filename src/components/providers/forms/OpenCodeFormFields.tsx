@@ -15,6 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
+import { useSettingsQuery } from "@/lib/query";
+import { useLatestRef } from "@/hooks/useLatestRef";
+import { resolveModelOverride } from "@/lib/modelMetadata";
 import {
   Plus,
   Trash2,
@@ -435,6 +438,9 @@ export function OpenCodeFormFields({
     presets: presetModelSources,
     prefetch: fetchedModels.length > 0,
   });
+  // 设置里填的模型覆盖：端点自报的参数不能盖掉用户手写的值。
+  const { data: settings } = useSettingsQuery();
+  const overridesRef = useLatestRef(settings?.modelMetadataOverrides);
   const fillModelMetadataFor = (id: string, silent?: boolean) =>
     fillModelMetadata(
       id,
@@ -469,13 +475,24 @@ export function OpenCodeFormFields({
     }
     const current = modelsRef.current;
     if (!Object.prototype.hasOwnProperty.call(current, id)) return false;
+    // 用户在「模型覆盖」里写过的字段以他为准，端点说什么都不改。
+    const override = resolveModelOverride(overridesRef.current, id);
     const filled = fillOpenCodeModel(
       current[id],
       {
-        contextWindow: advertised.contextWindow,
-        maxOutputTokens: advertised.maxOutputTokens,
-        inputModalities: advertised.inputModalities,
-        reasoning: advertised.reasoning,
+        contextWindow:
+          override?.contextWindow === undefined
+            ? advertised.contextWindow
+            : undefined,
+        maxOutputTokens:
+          override?.maxOutputTokens === undefined
+            ? advertised.maxOutputTokens
+            : undefined,
+        inputModalities: override?.inputModalities
+          ? undefined
+          : advertised.inputModalities,
+        reasoning:
+          override?.reasoning === undefined ? advertised.reasoning : undefined,
       },
       modelDialect,
     );

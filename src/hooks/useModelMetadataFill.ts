@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
+import { useSettingsQuery } from "@/lib/query";
 import { modelsDevQueryOptions, type ModelsDevResponse } from "@/lib/modelsDev";
 import {
   resolveModelMetadata,
@@ -44,6 +45,9 @@ export function useModelMetadataFill({
 
   const baseUrlRef = useLatestRef(baseUrl);
   const presetsRef = useLatestRef(presets);
+  // 设置里填的模型覆盖：补全时先用它，缺的字段再问预设 / models.dev。
+  const { data: settings } = useSettingsQuery();
+  const overridesRef = useLatestRef(settings?.modelMetadataOverrides);
 
   const pending = useRef<{
     models: Set<string>;
@@ -60,12 +64,16 @@ export function useModelMetadataFill({
       clearTimeout(batch.timer);
       batch.timer = setTimeout(() => {
         const models = [...batch.models];
+        const fromOverride = batch.sources.has("override");
         const fromPreset = batch.sources.has("preset");
         const fromModelsDev = batch.sources.has("models-dev");
         batch.models.clear();
         batch.sources.clear();
-        const source =
-          fromPreset && fromModelsDev
+        const source = fromOverride
+          ? t("providerForm.modelMetadataSourceOverride", {
+              defaultValue: "你填的模型覆盖",
+            })
+          : fromPreset && fromModelsDev
             ? t("providerForm.modelMetadataSourceBoth", {
                 defaultValue: "预设和 models.dev",
               })
@@ -110,6 +118,7 @@ export function useModelMetadataFill({
           baseUrl: options?.baseUrl || baseUrlRef.current,
           presets: presetsRef.current(),
           modelsDev,
+          overrides: overridesRef.current,
         });
       const run = (metadata: ResolvedModelMetadata | null) => {
         if (metadata && apply(metadata) && !options?.silent) {
@@ -127,6 +136,6 @@ export function useModelMetadataFill({
           // 离线或 models.dev 不可用：保持预设值补过的样子。
         });
     },
-    [baseUrlRef, notify, presetsRef, queryClient],
+    [baseUrlRef, notify, overridesRef, presetsRef, queryClient],
   );
 }
