@@ -15,10 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DirectoryInput } from "@/components/settings/DirectorySettings";
 import {
-  DirectoryInput,
+  DIRECTORY_APP,
+  DIRECTORY_APPS,
   type DirectoryAppId,
-} from "@/components/settings/DirectorySettings";
+  sanitizeDir,
+} from "@/config/directoryApps";
 import { CodexAuthSettings } from "@/components/settings/CodexAuthSettings";
 import { APP_DISPLAY_NAME, AppGlyph } from "@/components/shell/AppGlyph";
 import {
@@ -28,50 +31,8 @@ import {
   SettingsSwitchRow,
 } from "@/components/settings/SettingsLayout";
 
-const DIRECTORY_FIELD: Record<DirectoryAppId, keyof Settings> = {
-  claude: "claudeConfigDir",
-  codex: "codexConfigDir",
-  gemini: "geminiConfigDir",
-  grokbuild: "grokConfigDir",
-  opencode: "opencodeConfigDir",
-  openclaw: "openclawConfigDir",
-  hermes: "hermesConfigDir",
-  pi: "piConfigDir",
-  omp: "ompConfigDir",
-  dsh: "dshConfigDir",
-};
-
-const DIRECTORY_PLACEHOLDER: Record<DirectoryAppId, string> = {
-  claude: "settings.browsePlaceholderClaude",
-  codex: "settings.browsePlaceholderCodex",
-  gemini: "settings.browsePlaceholderGemini",
-  grokbuild: "settings.browsePlaceholderGrok",
-  opencode: "settings.browsePlaceholderOpencode",
-  openclaw: "settings.browsePlaceholderOpenclaw",
-  hermes: "settings.browsePlaceholderHermes",
-  pi: "settings.browsePlaceholderPi",
-  omp: "settings.browsePlaceholderOmp",
-  dsh: "settings.browsePlaceholderDsh",
-};
-
-const DIRECTORY_APPS: DirectoryAppId[] = [
-  "claude",
-  "codex",
-  "gemini",
-  "grokbuild",
-  "opencode",
-  "openclaw",
-  "hermes",
-  "pi",
-  "omp",
-  "dsh",
-];
-
-const normalizeDir = (value: unknown) =>
-  typeof value === "string" && value.trim() ? value.trim() : undefined;
-
-/// Radix Select cannot hold an empty value, so "auto" needs its own token.
-const AUTO_DSH_PROFILE = "__auto__";
+// Radix 的 Select 不接受空字符串值，用哨兵代表「自动」。
+const AUTO_PROFILE = "__auto__";
 
 interface AppConfigSectionProps {
   settings: SettingsFormState;
@@ -101,8 +62,9 @@ export function AppConfigSection({
   onSaveDirectories,
 }: AppConfigSectionProps) {
   const { t } = useTranslation();
-  const [dshProfiles, setDshProfiles] = useState<string[]>([]);
 
+  // DSH 的 profile 列表跟着配置目录走：换了目录，可选的 profile 也跟着换。
+  const [dshProfiles, setDshProfiles] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
     void settingsApi
@@ -119,16 +81,33 @@ export function AppConfigSection({
   }, [settings.dshConfigDir]);
 
   const isDirty = (app: DirectoryAppId) => {
-    const field = DIRECTORY_FIELD[app];
-    return (
-      normalizeDir(settings[field as keyof SettingsFormState]) !==
-      normalizeDir(savedSettings?.[field])
-    );
+    const { field } = DIRECTORY_APP[app];
+    return sanitizeDir(settings[field]) !== sanitizeDir(savedSettings?.[field]);
   };
 
+  const directoryRow = (app: DirectoryAppId) => (
+    <SettingsRow
+      label={t("settings.appConfig.configDir")}
+      help={{
+        title: t("settings.appConfig.configDir"),
+        body: t("settings.configDirectoryDescription"),
+      }}
+    >
+      <DirectoryInput
+        label=""
+        value={settings[DIRECTORY_APP[app].field]}
+        resolvedValue={resolvedDirs[app]}
+        placeholder={t(DIRECTORY_APP[app].placeholderKey)}
+        onChange={(value) => onDirectoryChange(app, value)}
+        onBrowse={() => onBrowseDirectory(app)}
+        onReset={() => onResetDirectory(app)}
+      />
+    </SettingsRow>
+  );
+
+  // DSH 会有好几份 profile（web / desktop / 具体版本目录），CC Switch 只读写其中一份。
   const dshProfileRow = () => {
-    const pinned = settings.dshProfile?.trim();
-    const value = pinned || AUTO_DSH_PROFILE;
+    const pinned = settings.dshProfile ?? "";
     const options =
       pinned && !dshProfiles.includes(pinned)
         ? [pinned, ...dshProfiles]
@@ -142,23 +121,23 @@ export function AppConfigSection({
         }}
       >
         <Select
-          value={value}
-          onValueChange={(next) =>
+          value={pinned || AUTO_PROFILE}
+          onValueChange={(value) =>
             void onAutoSave({
-              dshProfile: next === AUTO_DSH_PROFILE ? undefined : next,
+              dshProfile: value === AUTO_PROFILE ? undefined : value,
             })
           }
         >
-          <SelectTrigger className="h-9 w-[240px]">
+          <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={AUTO_DSH_PROFILE}>
+            <SelectItem value={AUTO_PROFILE}>
               {t("settings.dshProfileAuto")}
             </SelectItem>
-            {options.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name}
+            {options.map((profile) => (
+              <SelectItem key={profile} value={profile}>
+                {profile}
               </SelectItem>
             ))}
           </SelectContent>
@@ -166,30 +145,6 @@ export function AppConfigSection({
       </SettingsRow>
     );
   };
-
-  const directoryRow = (app: DirectoryAppId) => (
-    <SettingsRow
-      label={t("settings.appConfig.configDir")}
-      help={{
-        title: t("settings.appConfig.configDir"),
-        body: t("settings.configDirectoryDescription"),
-      }}
-    >
-      <DirectoryInput
-        label=""
-        value={
-          settings[DIRECTORY_FIELD[app] as keyof SettingsFormState] as
-            | string
-            | undefined
-        }
-        resolvedValue={resolvedDirs[app]}
-        placeholder={t(DIRECTORY_PLACEHOLDER[app])}
-        onChange={(value) => onDirectoryChange(app, value)}
-        onBrowse={() => onBrowseDirectory(app)}
-        onReset={() => onResetDirectory(app)}
-      />
-    </SettingsRow>
-  );
 
   const saveButton = (app: DirectoryAppId) =>
     isDirty(app) ? (
@@ -213,7 +168,7 @@ export function AppConfigSection({
 
   return (
     <>
-      {DIRECTORY_APPS.map((app) => (
+      {DIRECTORY_APPS.map(({ app }) => (
         <SettingsBlock
           key={app}
           id={`app-config-${app}`}

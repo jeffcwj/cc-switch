@@ -381,10 +381,7 @@ fn sync_dsh(state: &AppState, source: &Provider, report: &mut SyncReport) -> Res
     let key = view.key.clone();
     let settings_config = provider.settings_config.clone();
 
-    let exists = state
-        .db
-        .get_provider_by_id(&key, AppType::Dsh.as_str())?
-        .is_some();
+    let exists = state.db.get_provider_by_id(&key, &AppType::Dsh)?.is_some();
     if exists {
         ProviderService::update(state, AppType::Dsh, Some(&key), provider)?;
         report.updated.push(key.clone());

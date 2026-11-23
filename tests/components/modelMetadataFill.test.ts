@@ -6,6 +6,7 @@ import {
   fillKimiModel,
   fillOpenClawModel,
   fillOpenCodeModel,
+  fillWorkBuddyModel,
   piPresetThinkingFor,
   piSendsReasoningEffort,
   piThinkingLevelMapFromEfforts,
@@ -115,9 +116,9 @@ describe("fillHermesModel", () => {
   });
 
   it("only fills supports_vision towards true and keeps an explicit false", () => {
-    expect(
-      fillHermesModel({ id: "m" }, { inputModalities: ["text"] }),
-    ).toEqual({ id: "m" });
+    expect(fillHermesModel({ id: "m" }, { inputModalities: ["text"] })).toEqual(
+      { id: "m" },
+    );
     expect(
       fillHermesModel({ id: "m", supports_vision: false }, metadata),
     ).toEqual({ id: "m", context_length: 262144, supports_vision: false });
@@ -131,6 +132,12 @@ describe("fillOpenCodeModel", () => {
       limit: { context: 262144, output: 32768 },
       reasoning: true,
       modalities: { input: ["text", "image", "video"], output: ["text"] },
+      // models.dev 的档位名字直接搬过来，`turbo` 这种 OpenCode 不认的丢掉。
+      variants: {
+        low: { reasoningEffort: "low" },
+        high: { reasoningEffort: "high" },
+        max: { reasoningEffort: "max" },
+      },
     });
   });
 
@@ -156,13 +163,88 @@ describe("fillOpenCodeModel", () => {
     ).toEqual({
       name: "m",
       limit: { context: 1000, output: 32768 },
-      modalities: { input: ["text"] },
+      // 已经写下的 `["text"]` 补上 models.dev 还有的 image/video，不是原样跳过。
+      modalities: { input: ["text", "image", "video"], output: ["text"] },
       reasoning: true,
+      variants: {
+        low: { reasoningEffort: "low" },
+        high: { reasoningEffort: "high" },
+        max: { reasoningEffort: "max" },
+      },
     });
   });
 
   it("leaves the model untouched when nothing is known", () => {
     expect(fillOpenCodeModel({ name: "m" }, {})).toEqual({ name: "m" });
+  });
+});
+
+describe("fillOpenCodeModel — DSH dialect", () => {
+  const dsh56: KnownModelMetadata = {
+    contextWindow: 272_000,
+    maxOutputTokens: 128_000,
+    reasoning: true,
+    reasoningEfforts: ["none", "low", "medium", "high", "xhigh", "max"],
+    inputModalities: ["text", "image", "pdf"],
+    outputModalities: ["text"],
+  };
+
+  it("keeps DSH within the modalities and levels it can actually load", () => {
+    const filled = fillOpenCodeModel(
+      { name: "gpt-5.6-sol", modalities: { input: ["text", "pdf"] } },
+      dsh56,
+      "dsh",
+    );
+
+    // DSH 的 MODALITIES 只有 text / image，pdf 写进去整份配置会被拒。
+    expect(filled.modalities).toEqual({
+      input: ["text", "image"],
+      output: ["text"],
+    });
+    expect(filled.reasoningEfforts).toEqual({
+      off: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+      max: "max",
+    });
+    expect(filled.variants).toBeUndefined();
+  });
+
+  it("rescues an efforts map that only offers off", () => {
+    const filled = fillOpenCodeModel(
+      { name: "gpt-5.6-sol", reasoningEfforts: { off: null } },
+      dsh56,
+      "dsh",
+    );
+
+    expect(Object.keys(filled.reasoningEfforts as object)).toEqual(
+      expect.arrayContaining(["low", "high", "max"]),
+    );
+  });
+
+  it("adds thinking levels when the model switches reasoning on", () => {
+    const filled = fillOpenCodeModel(
+      { name: "gpt-5.6-sol", reasoningEfforts: false },
+      dsh56,
+      "dsh",
+    );
+
+    expect(filled.reasoningEfforts).toMatchObject({ off: null, high: "high" });
+  });
+
+  it("leaves an explicit level value alone while filling the gaps", () => {
+    const filled = fillOpenCodeModel(
+      { name: "gpt-5.6-sol", reasoningEfforts: { off: null, high: "custom" } },
+      dsh56,
+      "dsh",
+    );
+
+    expect(filled.reasoningEfforts).toMatchObject({
+      high: "custom",
+      low: "low",
+    });
   });
 });
 
@@ -234,6 +316,16 @@ describe("piSendsReasoningEffort", () => {
       true,
     );
     expect(piSendsReasoningEffort(base)).toBe(true);
+  });
+
+  it("accepts Pi's native Mistral protocol", () => {
+    expect(
+      piSendsReasoningEffort({
+        ...base,
+        api: "mistral-conversations",
+        baseUrl: "https://api.mistral.ai",
+      }),
+    ).toBe(true);
   });
 
   it("rejects protocols and endpoints with their own thinking format", () => {
@@ -331,5 +423,69 @@ describe("piPresetThinkingFor", () => {
         compat: { supportsReasoningEffort: false },
       }),
     ).toBeNull();
+  });
+});
+
+describe("fillWorkBuddyModel", () => {
+  const url = "https://api.example.test/v1";
+  const efforts = {
+    reasoning: {
+      supportedEfforts: ["low", "high", "max"],
+      defaultEffort: "high",
+      canDisableThinking: false,
+    },
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: null,
+      high: "high",
+      xhigh: null,
+      max: "max",
+    },
+  };
+
+  it("fills blank limits and only turns capabilities on", () => {
+    expect(
+      fillWorkBuddyModel(
+        { id: "m", supportsToolCall: true, supportsImages: false },
+        metadata,
+        url,
+      ),
+    ).toEqual({
+      id: "m",
+      supportsToolCall: true,
+      supportsImages: true,
+      supportsReasoning: true,
+      maxInputTokens: 262144,
+      maxOutputTokens: 32768,
+      ...efforts,
+    });
+    expect(
+      fillWorkBuddyModel(
+        { id: "m", maxInputTokens: 1000, supportsReasoning: true },
+        { reasoning: false, contextWindow: 2000 },
+        url,
+      ),
+    ).toEqual({ id: "m", maxInputTokens: 1000, supportsReasoning: true });
+  });
+
+  it("derives effort levels only where they reach the upstream", () => {
+    // Moonshot 不认 reasoning_effort（Pi 的探测规则），不列强度
+    expect(
+      fillWorkBuddyModel({ id: "m" }, metadata, "https://api.moonshot.cn/v1"),
+    ).not.toHaveProperty("reasoning");
+    // 已有的强度或映射不动
+    const kept = {
+      id: "m",
+      supportsReasoning: true,
+      thinkingLevelMap: { max: "max" },
+    };
+    expect(fillWorkBuddyModel(kept, metadata, url)).toEqual({
+      ...kept,
+      supportsImages: true,
+      maxInputTokens: 262144,
+      maxOutputTokens: 32768,
+    });
   });
 });

@@ -186,7 +186,7 @@ function ModelOptionKeyInput({
 
 /**
  * DeepSeek Harness 的思考档位：列出的档位才提供，值是发给上游的档位名（null 表示不带）。
- * 新打开的档位按同名透传；不在 Pi 档位表里的键原样保留。
+ * 新打开的档位按同名透传；只管理 Pi 档位表中的键，不静默写回未知非法键。
  */
 function ReasoningEffortsField({
   modelKey,
@@ -199,7 +199,9 @@ function ReasoningEffortsField({
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const offeredCount = Object.keys(efforts).length;
+  const offeredCount = PI_THINKING_LEVELS.filter(
+    (level) => level in efforts,
+  ).length;
 
   const toggle = (level: string, offered: boolean) => {
     const next: Record<string, string | null> = {};
@@ -211,9 +213,6 @@ function ReasoningEffortsField({
       } else if (known in efforts) {
         next[known] = efforts[known];
       }
-    }
-    for (const [other, value] of Object.entries(efforts)) {
-      if (!(other in next) && other !== level) next[other] = value;
     }
     onChange(next);
   };
@@ -344,6 +343,8 @@ export function OpenCodeFormFields({
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const modelFetchGeneration = useRef(0);
 
+  // Callers without custom headers may pass a fresh {} on every render; compare by content.
+  const headersKey = JSON.stringify(headers);
   useEffect(() => {
     setFetchedModels((prev) => (prev.length === 0 ? prev : []));
     setIsFetchingModels(false);
@@ -351,7 +352,7 @@ export function OpenCodeFormFields({
       // Ignore responses for a previous endpoint/key or an unmounted form.
       modelFetchGeneration.current += 1;
     };
-  }, [baseUrl, apiKey, headers]);
+  }, [baseUrl, apiKey, headersKey]);
 
   const handleFetchModels = useCallback(() => {
     const requestHeaders = normalizeRequestHeaders(headers);
@@ -1144,31 +1145,33 @@ export function OpenCodeFormFields({
                         />
                       )}
 
-                    {modelDialect === "dsh" && isPlainObject(model.compat) && (
-                      <StructuredOptionsEditor
-                        id={`opencode-${key}-compat`}
-                        title={t("pi.form.compatibility")}
-                        hint={t("pi.form.compatibilityHint")}
-                        addLabel={t("pi.form.addCompatibilityOption")}
-                        emptyLabel={t("pi.form.noCompatibilityOptions")}
-                        keyLabel={t("pi.form.optionKey")}
-                        valueLabel={t("pi.form.optionValue")}
-                        keyPlaceholder="supportsDeveloperRole"
-                        valuePlaceholder="false"
-                        removeLabel={t("pi.form.removeCompatibilityOption")}
-                        options={model.compat}
-                        onOptionsChange={(compat) => {
-                          const { compat: _previous, ...rest } = model;
-                          updateModel(
-                            key,
-                            Object.keys(compat).length > 0
-                              ? { ...rest, compat }
-                              : (rest as OpenCodeModel),
-                          );
-                        }}
-                        className="sm:col-span-2"
-                      />
-                    )}
+                    {modelDialect === "dsh" &&
+                      (model.compat === undefined ||
+                        isPlainObject(model.compat)) && (
+                        <StructuredOptionsEditor
+                          id={`opencode-${key}-compat`}
+                          title={t("pi.form.compatibility")}
+                          hint={t("pi.form.compatibilityHint")}
+                          addLabel={t("pi.form.addCompatibilityOption")}
+                          emptyLabel={t("pi.form.noCompatibilityOptions")}
+                          keyLabel={t("pi.form.optionKey")}
+                          valueLabel={t("pi.form.optionValue")}
+                          keyPlaceholder="supportsDeveloperRole"
+                          valuePlaceholder="false"
+                          removeLabel={t("pi.form.removeCompatibilityOption")}
+                          options={model.compat ?? {}}
+                          onOptionsChange={(compat) => {
+                            const { compat: _previous, ...rest } = model;
+                            updateModel(
+                              key,
+                              Object.keys(compat).length > 0
+                                ? { ...rest, compat }
+                                : (rest as OpenCodeModel),
+                            );
+                          }}
+                          className="sm:col-span-2"
+                        />
+                      )}
 
                     {/* Model Properties (extra fields like variants, cost) */}
                     <div className="space-y-2 sm:col-span-2">
