@@ -458,16 +458,16 @@ describe("resolveModelMetadata", () => {
     const resolve = (id: string, baseUrl: string) =>
       resolveModelMetadata(id, { baseUrl, modelsDev: openai })?.contextWindow;
 
-    // 认不出地址、借原厂条目的中转封顶，带命名空间的写法也一样。
+    // 认不出地址、借原厂条目的中转：原厂窗口照用，不再封顶，带命名空间的写法也一样。
     expect(resolve("gpt-6-astra", "https://relay.example.com/v1")).toBe(
-      GPT_CONTEXT_WINDOW_CAP,
+      1050000,
     );
     expect(resolve("openai/GPT-6-Astra", "https://relay.example.com/v1")).toBe(
-      GPT_CONTEXT_WINDOW_CAP,
+      1050000,
     );
-    // 认出了地址但那家没写窗口，借来的原厂窗口同样封顶。
+    // 认出了地址但那家没写窗口，借来的原厂窗口同样照用。
     expect(resolve("gpt-6-astra", "https://gateway.example.com/v1")).toBe(
-      GPT_CONTEXT_WINDOW_CAP,
+      1050000,
     );
     // 按地址认出的那家、同地址预设照用自己的值。
     expect(resolve("gpt-6-astra", "https://api.openai.com/v1")).toBe(1050000);
