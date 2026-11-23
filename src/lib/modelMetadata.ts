@@ -64,10 +64,7 @@ export function isGptModelId(modelId: string): boolean {
   return /(?:^|[^a-z0-9])gpt-/.test(normalizeModelsDevModelId(modelId));
 }
 
-/**
- * GPT 模型的窗口曾经按 {@link GPT_CONTEXT_WINDOW_CAP} 封顶（订阅只有 272K）。
- * 现在按取到的值照用，函数保留给还在调用它的界面提示。
- */
+/** GPT 模型的窗口按 {@link GPT_CONTEXT_WINDOW_CAP} 封顶，本来就小的不动。 */
 export function capGptContextWindow(
   modelId: string,
   contextWindow: number,
@@ -357,7 +354,7 @@ function fieldCount(metadata: KnownModelMetadata): number {
  * 3. models.dev 里的原厂条目（不带价格：转售价不等于原厂价；思考档位照用，
  *    中转站绝大多数与原厂一致），
  *    认出了供应商也照样用它补供应商条目里没写的字段。
- * 原厂条目的窗口照用，不再按 {@link GPT_CONTEXT_WINDOW_CAP} 封顶：中转站报多少就是多少。
+ * GPT 模型的窗口只在取自原厂条目时按 {@link GPT_CONTEXT_WINDOW_CAP} 封顶。
  * 都查不到返回 null。
  */
 export function resolveModelMetadata(
@@ -401,7 +398,11 @@ export function resolveModelMetadata(
     }
     const vendorModel = findByVendor(index, id);
     if (vendorModel) {
-      add("models-dev", metadataFromModelsDev(vendorModel, false));
+      const vendor = metadataFromModelsDev(vendorModel, false);
+      if (vendor.contextWindow !== undefined) {
+        vendor.contextWindow = capGptContextWindow(id, vendor.contextWindow);
+      }
+      add("models-dev", vendor);
     }
   }
 
