@@ -47,7 +47,7 @@ export interface CustomEndpoint {
 }
 
 /** 可以把 OpenCode 供应商同步过去的应用 */
-export type SyncTargetApp = "dsh" | "codex";
+export type SyncTargetApp = "dsh" | "codex" | "claude-desktop";
 
 /** 目标应用装不下的供应商，连同原因一起回报给界面 */
 export interface SyncSkip {

@@ -49,6 +49,7 @@ pub fn target_app(raw: &str) -> Result<AppType, AppError> {
     match raw {
         "dsh" => Ok(AppType::Dsh),
         "codex" => Ok(AppType::Codex),
+        "claude-desktop" => Ok(AppType::ClaudeDesktop),
         other => Err(AppError::InvalidInput(format!(
             "unsupported sync target '{other}'"
         ))),
@@ -102,6 +103,7 @@ fn sync_provider(
     let result = match target {
         AppType::Dsh => sync_dsh(state, source, &mut one),
         AppType::Codex => sync_codex(state, source, &mut one),
+        AppType::ClaudeDesktop => sync_desktop(state, source, &mut one),
         _ => Err(AppError::InvalidInput(format!(
             "app '{}' is not a sync target",
             target.as_str()
@@ -432,6 +434,99 @@ fn sync_codex(
     Ok(())
 }
 
+/// Claude Desktop 3P only speaks Anthropic Messages; every other SDK family reaches it through
+/// the local router, which converts the request on the way out.
+fn desktop_api_format(npm: &str) -> Option<&'static str> {
+    match npm {
+        "@ai-sdk/anthropic" => Some("anthropic"),
+        "@ai-sdk/openai" => Some("openai_responses"),
+        "@ai-sdk/openai-compatible" => Some("openai_chat"),
+        _ => None,
+    }
+}
+
+/// A Claude Desktop card in local-route mode: Desktop keeps its four role slots, so the source's
+/// models are spread across them in order and the first one repeats when there are fewer models
+/// than slots.
+fn desktop_provider(view: &SourceView) -> Result<Provider, AppError> {
+    let api_format = desktop_api_format(&view.npm).ok_or_else(|| {
+        AppError::InvalidInput(format!(
+            "Claude Desktop cannot route npm package '{}' of '{}'",
+            view.npm, view.name
+        ))
+    })?;
+    let models: Vec<String> = view.models.iter().map(|(id, _)| id.clone()).collect();
+    if models.is_empty() {
+        return Err(AppError::InvalidInput(format!(
+            "OpenCode provider '{}' has no models to show in Claude Desktop",
+            view.name
+        )));
+    }
+
+    let mut routes = std::collections::HashMap::new();
+    for (index, route) in crate::claude_desktop_config::DEFAULT_PROXY_ROUTES
+        .iter()
+        .enumerate()
+    {
+        let model = models[index % models.len()].clone();
+        routes.insert(
+            route.route_id.to_string(),
+            crate::provider::ClaudeDesktopModelRoute {
+                label_override: Some(model.clone()),
+                model,
+                supports_1m: Some(route.supports_1m),
+            },
+        );
+    }
+
+    let mut provider = Provider::with_id(
+        uuid::Uuid::new_v4().to_string(),
+        view.name.clone(),
+        json!({
+            "env": {
+                "ANTHROPIC_BASE_URL": view.base_url,
+                "ANTHROPIC_AUTH_TOKEN": view.api_key,
+            },
+        }),
+        Some(view.base_url.clone()),
+    );
+    provider.meta = Some(ProviderMeta {
+        endpoint_auto_select: Some(true),
+        api_format: Some(api_format.to_string()),
+        claude_desktop_mode: Some(crate::provider::ClaudeDesktopMode::Proxy),
+        claude_desktop_model_routes: routes,
+        ..Default::default()
+    });
+    Ok(provider)
+}
+
+fn sync_desktop(
+    state: &AppState,
+    source: &Provider,
+    report: &mut SyncReport,
+) -> Result<(), AppError> {
+    let view = SourceView::of(source)?;
+    let existing = ProviderService::list(state, AppType::ClaudeDesktop)?
+        .into_values()
+        .find(|provider| provider.name.eq_ignore_ascii_case(&view.name));
+
+    match existing {
+        Some(current) => {
+            let id = current.id.clone();
+            let mut provider = desktop_provider(&view)?;
+            provider.id = id.clone();
+            ProviderService::update(state, AppType::ClaudeDesktop, Some(&id), provider)?;
+            report.updated.push(view.name.clone());
+        }
+        None => {
+            let provider = desktop_provider(&view)?;
+            ProviderService::add(state, AppType::ClaudeDesktop, provider, false)?;
+            report.created.push(view.name.clone());
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -615,5 +710,45 @@ mod tests {
             provider.settings_config["models"]["model-a"]["reasoning"],
             Value::Bool(true)
         );
+    }
+
+    #[test]
+    fn desktop_row_hands_the_relay_to_the_local_proxy() {
+        let view = SourceView::of(&opencode_provider("@ai-sdk/anthropic")).unwrap();
+        let provider = desktop_provider(&view).unwrap();
+
+        assert_eq!(
+            provider.settings_config["env"]["ANTHROPIC_BASE_URL"],
+            Value::String("https://api.example.com/v1".into())
+        );
+        assert_eq!(
+            provider.settings_config["env"]["ANTHROPIC_AUTH_TOKEN"],
+            Value::String("sk-test".into())
+        );
+
+        let meta = provider.meta.expect("meta");
+        assert_eq!(
+            meta.claude_desktop_mode,
+            Some(crate::provider::ClaudeDesktopMode::Proxy)
+        );
+        assert_eq!(meta.api_format.as_deref(), Some("anthropic"));
+        // Desktop keeps its four role slots; every one of them has to point somewhere.
+        assert_eq!(
+            meta.claude_desktop_model_routes.len(),
+            crate::claude_desktop_config::DEFAULT_PROXY_ROUTES.len()
+        );
+        for route in crate::claude_desktop_config::DEFAULT_PROXY_ROUTES {
+            let mapped = meta
+                .claude_desktop_model_routes
+                .get(route.route_id)
+                .expect("route is mapped");
+            assert_eq!(mapped.model, "model-a");
+        }
+    }
+
+    #[test]
+    fn desktop_row_rejects_unknown_sdk_families() {
+        let view = SourceView::of(&opencode_provider("@ai-sdk/google")).unwrap();
+        assert!(desktop_provider(&view).is_err());
     }
 }

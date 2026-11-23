@@ -716,6 +716,13 @@ export function ProviderList({
           <Button variant="quiet" size="sm" onClick={() => onSyncAll("codex")}>
             {t("provider.syncAllToCodex")}
           </Button>
+          <Button
+            variant="quiet"
+            size="sm"
+            onClick={() => onSyncAll("claude-desktop")}
+          >
+            {t("provider.syncAllToClaudeDesktop")}
+          </Button>
         </div>
       )}
       {showListHeader && (

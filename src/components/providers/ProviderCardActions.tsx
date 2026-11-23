@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { SyncTargetApp } from "@/types";
 import type {
   CardButton,
   CardMenuItem,
@@ -72,7 +73,7 @@ interface ProviderCardActionsProps {
   onDuplicate?: () => void;
   onTest?: () => void;
   /** 把这家供应商同步到别的应用（目前只有 OpenCode 卡片会传） */
-  onSyncTo?: (target: "dsh" | "codex") => void;
+  onSyncTo?: (target: SyncTargetApp) => void;
   isTesting?: boolean;
   onConfigureUsage?: () => void;
   onOpenTerminal?: () => void;
@@ -230,6 +231,9 @@ export function ProviderCardActions({
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => onSyncTo("codex")}>
                     {t("provider.syncToCodex")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onSyncTo("claude-desktop")}>
+                    {t("provider.syncToClaudeDesktop")}
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
