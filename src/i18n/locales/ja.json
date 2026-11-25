@@ -107,7 +107,7 @@
     "syncToClaude": "Claude Code",
     "syncAllToClaude": "すべて Claude Code に同期",
     "syncToClaudeDesktop": "Claude Desktop",
-    "syncAllHint": "OpenCode に追加済みのプロバイダーをコピーします：",
+    "syncAllHint": "ここに追加済みのプロバイダーをコピー：",
     "syncAllToDsh": "すべて DSH に同期",
     "syncAllToCodex": "すべて Codex に同期",
     "syncAllToClaudeDesktop": "すべて Claude Desktop に同期",

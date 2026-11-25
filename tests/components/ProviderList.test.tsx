@@ -174,6 +174,19 @@ describe("ProviderList Component", () => {
     onOpenWebsite: vi.fn(),
   };
 
+  it("survives a wired sync-all handler without any sync targets", () => {
+    renderWithQueryClient(
+      <ProviderList
+        {...baseProps}
+        appId="claude"
+        providers={{}}
+        onSyncAll={vi.fn()}
+        onSyncTo={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("provider.syncAllHint")).not.toBeInTheDocument();
+  });
+
   it.each([false, true])(
     "keeps account login inside the add-provider flow with existing providers: %s",
     (hasProvider) => {

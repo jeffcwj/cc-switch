@@ -107,7 +107,7 @@
     "syncToClaude": "Claude Code",
     "syncAllToClaude": "Tümünü Claude Code'a aktar",
     "syncToClaudeDesktop": "Claude Desktop",
-    "syncAllHint": "OpenCode'a eklenmiş sağlayıcıları kopyala:",
+    "syncAllHint": "Buraya eklenen sağlayıcıları şuraya kopyala:",
     "syncAllToDsh": "Tümünü DSH'ye eşitle",
     "syncAllToCodex": "Tümünü Codex'e eşitle",
     "syncAllToClaudeDesktop": "Tümünü Claude Desktop'a aktar",

@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 import type { OpenClawProviderConfig, Provider, SyncTargetApp } from "@/types";
+import type { SyncTargetOption } from "@/lib/syncTargets";
 import { getOpencodeDeclaredModels } from "@/components/providers/forms/helpers/opencodeFormUtils";
 import type { AppId } from "@/lib/api";
 import { providersApi } from "@/lib/api/providers";
@@ -96,7 +97,7 @@ interface ProviderListProps {
   /** 一次把当前应用的全部供应商复制过去 */
   onSyncAll?: (target: SyncTargetApp) => void;
   /** 可以复制到哪些应用；与卡片菜单共用一张表 */
-  syncTargets: SyncTargetOption[];
+  syncTargets?: SyncTargetOption[];
   /** DSH：设置里指定的 profile，空＝自动（web → desktop） */
   dshProfile?: string;
   onOpenWebsite: (url: string) => void;
@@ -145,6 +146,7 @@ export function ProviderList({
 }: ProviderListProps) {
   const { t } = useTranslation();
   const { checkProvider, isChecking } = useStreamCheck(appId);
+  const targets = syncTargets ?? [];
   const { sortedProviders, sensors, handleDragEnd } = useDragSort(
     providers,
     appId,
@@ -708,12 +710,12 @@ export function ProviderList({
       {liveConfigErrorNotice}
       {unreadableNotice}
       {searchSlot && createPortal(searchField, searchSlot)}
-      {onSyncAll && syncTargets.length > 0 && filteredProviders.length > 0 && (
+      {onSyncAll && targets.length > 0 && filteredProviders.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-panel border border-dashed border-border bg-subtle px-3 py-2">
           <span className="text-caption text-fg-3">
             {t("provider.syncAllHint")}
           </span>
-          {syncTargets.map((option) => (
+          {targets.map((option) => (
             <Button
               key={option.target}
               variant="quiet"

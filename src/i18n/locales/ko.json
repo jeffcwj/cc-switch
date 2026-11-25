@@ -296,7 +296,7 @@
     "syncToClaude": "Claude Code",
     "syncAllToClaude": "모두 Claude Code로 동기화",
     "syncToClaudeDesktop": "Claude Desktop",
-    "syncAllHint": "OpenCode에 이미 추가한 공급자를 복사합니다:",
+    "syncAllHint": "여기에 추가한 공급자를 복사：",
     "syncAllToDsh": "모두 DSH로 동기화",
     "syncAllToCodex": "모두 Codex로 동기화",
     "syncAllToClaudeDesktop": "모두 Claude Desktop으로 동기화",

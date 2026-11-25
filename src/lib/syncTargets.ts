@@ -1,4 +1,5 @@
-import type { AppId, SyncTargetApp } from "@/types";
+import type { AppId } from "@/lib/api/types";
+import type { SyncTargetApp } from "@/types";
 
 export interface SyncTargetOption {
   target: SyncTargetApp;

@@ -65,6 +65,9 @@ type ListCallbacks = Pick<
   | "onOpenWebsite"
   | "onOpenTerminal"
   | "onCreate"
+  | "onSyncTo"
+  | "onSyncAll"
+  | "syncTargets"
   | "searchOpen"
   | "onSearchOpenChange"
 >;

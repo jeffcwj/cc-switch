@@ -107,7 +107,7 @@
     "syncToClaude": "Claude Code",
     "syncAllToClaude": "全部同步到 Claude Code",
     "syncToClaudeDesktop": "Claude Desktop",
-    "syncAllHint": "把 OpenCode 里已添加的供应商复制过去：",
+    "syncAllHint": "把已添加的供应商复制到：",
     "syncAllToDsh": "全部同步到 DSH",
     "syncAllToCodex": "全部同步到 Codex",
     "syncAllToClaudeDesktop": "全部同步到 Claude Desktop",

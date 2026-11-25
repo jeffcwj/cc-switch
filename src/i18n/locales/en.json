@@ -107,7 +107,7 @@
     "syncToClaude": "Claude Code",
     "syncAllToClaude": "Sync all to Claude Code",
     "syncToClaudeDesktop": "Claude Desktop",
-    "syncAllHint": "Copy over the providers already added in OpenCode:",
+    "syncAllHint": "Copy the providers added here into:",
     "syncAllToDsh": "Sync all to DSH",
     "syncAllToCodex": "Sync all to Codex",
     "syncAllToClaudeDesktop": "Sync all to Claude Desktop",

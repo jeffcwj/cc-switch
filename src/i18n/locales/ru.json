@@ -296,7 +296,7 @@
     "syncToClaude": "Claude Code",
     "syncAllToClaude": "Синхронизировать всё в Claude Code",
     "syncToClaudeDesktop": "Claude Desktop",
-    "syncAllHint": "Скопировать провайдеров, уже добавленных в OpenCode:",
+    "syncAllHint": "Скопировать добавленных здесь провайдеров в:",
     "syncAllToDsh": "Синхронизировать все в DSH",
     "syncAllToCodex": "Синхронизировать все в Codex",
     "syncAllToClaudeDesktop": "Синхронизировать все в Claude Desktop",

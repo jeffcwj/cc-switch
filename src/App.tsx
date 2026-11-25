@@ -1741,6 +1741,7 @@ function App() {
             )
           }
           {...listCallbacks}
+          syncTargets={syncTargetsFor(modeAppId)}
         />
       );
     }
