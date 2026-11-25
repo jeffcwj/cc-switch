@@ -293,6 +293,8 @@
     "syncTo": "Synchronisieren",
     "syncToDsh": "DeepSeek Harness",
     "syncToCodex": "Codex",
+    "syncToClaude": "Claude Code",
+    "syncAllToClaude": "Alle zu Claude Code synchronisieren",
     "syncToClaudeDesktop": "Claude Desktop",
     "syncAllHint": "Die in OpenCode hinzugefügten Anbieter übernehmen:",
     "syncAllToDsh": "Alle zu DSH synchronisieren",

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { SyncTargetApp } from "@/types";
+import type { SyncTargetOption } from "@/lib/syncTargets";
 import type {
   CardButton,
   CardMenuItem,
@@ -72,8 +73,10 @@ interface ProviderCardActionsProps {
   onDelete: () => void;
   onDuplicate?: () => void;
   onTest?: () => void;
-  /** 把这家供应商同步到别的应用（目前只有 OpenCode 卡片会传） */
+  /** 把这家供应商复制到别的应用（OpenCode、Claude Code、Claude Desktop 的卡片会传） */
   onSyncTo?: (target: SyncTargetApp) => void;
+  /** 可以复制到哪些应用；为空时整个「同步到」子菜单不出现 */
+  syncTargets?: SyncTargetOption[];
   isTesting?: boolean;
   onConfigureUsage?: () => void;
   onOpenTerminal?: () => void;
@@ -97,6 +100,7 @@ export function ProviderCardActions({
   onDuplicate,
   onTest,
   onSyncTo,
+  syncTargets,
   isTesting,
   onConfigureUsage,
   onOpenTerminal,
@@ -215,7 +219,7 @@ export function ProviderCardActions({
             <ModeMenuItem key={item.key} item={item} />
           ))}
           {menuItems.length > 0 && <DropdownMenuSeparator />}
-          {onSyncTo && (
+          {onSyncTo && (syncTargets?.length ?? 0) > 0 && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 {t("provider.syncTo")}
@@ -226,15 +230,14 @@ export function ProviderCardActions({
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="min-w-56">
-                  <DropdownMenuItem onSelect={() => onSyncTo("dsh")}>
-                    {t("provider.syncToDsh")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => onSyncTo("codex")}>
-                    {t("provider.syncToCodex")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => onSyncTo("claude-desktop")}>
-                    {t("provider.syncToClaudeDesktop")}
-                  </DropdownMenuItem>
+                  {syncTargets?.map((option) => (
+                    <DropdownMenuItem
+                      key={option.target}
+                      onSelect={() => onSyncTo(option.target)}
+                    >
+                      {t(option.labelKey)}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>

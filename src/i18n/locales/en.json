@@ -104,6 +104,8 @@
     "syncTo": "Sync to",
     "syncToDsh": "DeepSeek Harness",
     "syncToCodex": "Codex",
+    "syncToClaude": "Claude Code",
+    "syncAllToClaude": "Sync all to Claude Code",
     "syncToClaudeDesktop": "Claude Desktop",
     "syncAllHint": "Copy over the providers already added in OpenCode:",
     "syncAllToDsh": "Sync all to DSH",

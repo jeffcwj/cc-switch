@@ -104,6 +104,8 @@
     "syncTo": "Şuraya eşitle",
     "syncToDsh": "DeepSeek Harness",
     "syncToCodex": "Codex",
+    "syncToClaude": "Claude Code",
+    "syncAllToClaude": "Tümünü Claude Code'a aktar",
     "syncToClaudeDesktop": "Claude Desktop",
     "syncAllHint": "OpenCode'a eklenmiş sağlayıcıları kopyala:",
     "syncAllToDsh": "Tümünü DSH'ye eşitle",

@@ -1101,41 +1101,50 @@ pub async fn import_opencode_providers_from_live(
     .await
 }
 
-/// Copy one OpenCode provider into the DSH, Codex or Claude Desktop list. Clicking the
-/// provider card's "同步到" goes here; the key is the OpenCode provider key (its row id).
+/// Copy one provider into another app's list. The card's "同步到" goes here; `app` is the
+/// app the card belongs to and `providerId` its row id.
 #[tauri::command]
-pub async fn sync_opencode_provider(
+pub async fn sync_provider_to_app(
     app_handle: tauri::AppHandle,
+    app: String,
     #[allow(non_snake_case)] providerId: String,
     target: String,
 ) -> Result<crate::services::provider::sync_opencode::SyncReport, String> {
+    let source = AppType::from_str(&app)?;
     let target = crate::services::provider::sync_opencode::target_app(&target)
         .map_err(|error| error.to_string())?;
     tauri::async_runtime::spawn_blocking(move || {
         let state = app_handle
             .try_state::<AppState>()
             .ok_or_else(|| "应用状态不可用".to_string())?;
-        crate::services::provider::sync_opencode::sync_one(state.inner(), &providerId, target)
-            .map_err(|error| error.to_string())
+        crate::services::provider::sync_opencode::sync_one(
+            state.inner(),
+            source,
+            &providerId,
+            target,
+        )
+        .map_err(|error| error.to_string())
     })
     .await
     .map_err(|error| format!("同步任务执行失败: {error}"))?
 }
 
-/// Copy every OpenCode provider into the DSH or Codex list, skipping the ones the target
-/// cannot load (Anthropic-only providers for Codex, unknown npm packages).
+/// Copy every provider of `app` into `target`, skipping the ones the target cannot load
+/// (Anthropic-only providers for Codex, unknown SDK families, rows without a gateway env).
 #[tauri::command]
-pub async fn sync_all_opencode_providers(
+pub async fn sync_all_providers_to_app(
     app_handle: tauri::AppHandle,
+    app: String,
     target: String,
 ) -> Result<crate::services::provider::sync_opencode::SyncReport, String> {
+    let source = AppType::from_str(&app)?;
     let target = crate::services::provider::sync_opencode::target_app(&target)
         .map_err(|error| error.to_string())?;
     tauri::async_runtime::spawn_blocking(move || {
         let state = app_handle
             .try_state::<AppState>()
             .ok_or_else(|| "应用状态不可用".to_string())?;
-        crate::services::provider::sync_opencode::sync_all(state.inner(), target)
+        crate::services::provider::sync_opencode::sync_all(state.inner(), source, target)
             .map_err(|error| error.to_string())
     })
     .await

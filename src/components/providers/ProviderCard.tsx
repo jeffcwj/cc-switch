@@ -13,6 +13,7 @@ import type {
 } from "@dnd-kit/core";
 import type { Provider, SyncTargetApp } from "@/types";
 import type { AppId } from "@/lib/api";
+import { syncTargetsFor } from "@/lib/syncTargets";
 import { authApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ProviderIconBox } from "@/components/ProviderIconBox";
@@ -873,10 +874,9 @@ export function ProviderCard({
                 : undefined
             }
             onSyncTo={
-              onSyncTo && appId === "opencode"
-                ? (target) => onSyncTo(provider, target)
-                : undefined
+              onSyncTo ? (target) => onSyncTo(provider, target) : undefined
             }
+            syncTargets={syncTargetsFor(appId)}
             isTesting={isTesting}
             onConfigureUsage={
               (isOfficial &&

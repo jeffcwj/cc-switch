@@ -104,6 +104,8 @@
     "syncTo": "同期先",
     "syncToDsh": "DeepSeek Harness",
     "syncToCodex": "Codex",
+    "syncToClaude": "Claude Code",
+    "syncAllToClaude": "すべて Claude Code に同期",
     "syncToClaudeDesktop": "Claude Desktop",
     "syncAllHint": "OpenCode に追加済みのプロバイダーをコピーします：",
     "syncAllToDsh": "すべて DSH に同期",

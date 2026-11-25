@@ -91,10 +91,12 @@ interface ProviderListProps {
   onDisableOmoSlim?: () => void;
   onDuplicate: (provider: Provider) => void;
   onConfigureUsage?: (provider: Provider) => void;
-  /** 把这家供应商同步到别的应用（目前只有 OpenCode 页面会传） */
+  /** 把这家供应商复制到别的应用（OpenCode / Claude Code / Claude Desktop 页面会传） */
   onSyncTo?: (provider: Provider, target: SyncTargetApp) => void;
-  /** 一次把当前应用的全部供应商同步过去 */
+  /** 一次把当前应用的全部供应商复制过去 */
   onSyncAll?: (target: SyncTargetApp) => void;
+  /** 可以复制到哪些应用；与卡片菜单共用一张表 */
+  syncTargets: SyncTargetOption[];
   /** DSH：设置里指定的 profile，空＝自动（web → desktop） */
   dshProfile?: string;
   onOpenWebsite: (url: string) => void;
@@ -129,6 +131,7 @@ export function ProviderList({
   onConfigureUsage,
   onSyncTo,
   onSyncAll,
+  syncTargets,
   dshProfile,
   onOpenWebsite,
   onOpenTerminal,
@@ -705,24 +708,21 @@ export function ProviderList({
       {liveConfigErrorNotice}
       {unreadableNotice}
       {searchSlot && createPortal(searchField, searchSlot)}
-      {onSyncAll && filteredProviders.length > 0 && (
+      {onSyncAll && syncTargets.length > 0 && filteredProviders.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-panel border border-dashed border-border bg-subtle px-3 py-2">
           <span className="text-caption text-fg-3">
             {t("provider.syncAllHint")}
           </span>
-          <Button variant="quiet" size="sm" onClick={() => onSyncAll("dsh")}>
-            {t("provider.syncAllToDsh")}
-          </Button>
-          <Button variant="quiet" size="sm" onClick={() => onSyncAll("codex")}>
-            {t("provider.syncAllToCodex")}
-          </Button>
-          <Button
-            variant="quiet"
-            size="sm"
-            onClick={() => onSyncAll("claude-desktop")}
-          >
-            {t("provider.syncAllToClaudeDesktop")}
-          </Button>
+          {syncTargets.map((option) => (
+            <Button
+              key={option.target}
+              variant="quiet"
+              size="sm"
+              onClick={() => onSyncAll(option.target)}
+            >
+              {t(option.labelKey)}
+            </Button>
+          ))}
         </div>
       )}
       {showListHeader && (

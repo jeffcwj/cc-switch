@@ -94,6 +94,7 @@ import { WindowControls } from "@/components/shell/WindowControls";
 import { APP_DISPLAY_NAME, AppGlyph } from "@/components/shell/AppGlyph";
 import { ProfileSwitcher } from "@/components/profiles/ProfileSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
+import { syncTargetsFor } from "@/lib/syncTargets";
 import {
   hasOpencodeDefinition,
   isNativeOpencodeConfig,
@@ -1682,18 +1683,18 @@ function App() {
       setConfirmAction({ provider, action: "delete" }),
     onDuplicate: handleDuplicateProvider,
     onSyncTo:
-      activeApp === "opencode"
+      syncTargetsFor(activeApp).length > 0
         ? (provider: Provider, target: SyncTargetApp) => {
             void reportProviderSync(
-              providersApi.syncOpenCodeProvider(provider.id, target),
+              providersApi.syncProviderToApp(activeApp, provider.id, target),
             );
           }
         : undefined,
     onSyncAll:
-      activeApp === "opencode"
+      syncTargetsFor(activeApp).length > 0
         ? (target: SyncTargetApp) => {
             void reportProviderSync(
-              providersApi.syncAllOpenCodeProviders(target),
+              providersApi.syncAllProvidersToApp(activeApp, target),
             );
           }
         : undefined,
@@ -1753,6 +1754,7 @@ function App() {
         <div className="space-y-4">
           <ProviderList
             {...listCallbacks}
+            syncTargets={syncTargetsFor(activeApp)}
             providers={providers}
             currentProviderId={currentProviderId}
             appId={activeApp}

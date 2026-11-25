@@ -293,6 +293,8 @@
     "syncTo": "Синхронизировать",
     "syncToDsh": "DeepSeek Harness",
     "syncToCodex": "Codex",
+    "syncToClaude": "Claude Code",
+    "syncAllToClaude": "Синхронизировать всё в Claude Code",
     "syncToClaudeDesktop": "Claude Desktop",
     "syncAllHint": "Скопировать провайдеров, уже добавленных в OpenCode:",
     "syncAllToDsh": "Синхронизировать все в DSH",

@@ -1,9 +1,8 @@
-//! Copy OpenCode providers into another app's provider list.
+//! Copy providers from one app's list into another app's list.
 //!
 //! OpenCode's provider key is the row id and also the key DSH uses in
-//! `providers.<key>`, so a sync upserts by that key. Codex has no per-provider key —
-//! every third-party row writes the same `[model_providers.custom]` route — so those
-//! rows are matched by name instead.
+//! `providers.<key>`, so an OpenCode sync upserts by that key. Codex, Claude Code and
+//! Claude Desktop have no per-provider key — their rows are matched by name instead.
 //!
 //! Rows are created through the same service calls the UI uses (`add` / `update`), so
 //! a sync behaves exactly like adding the provider by hand: no schema changes, no extra
@@ -49,6 +48,7 @@ pub fn target_app(raw: &str) -> Result<AppType, AppError> {
     match raw {
         "dsh" => Ok(AppType::Dsh),
         "codex" => Ok(AppType::Codex),
+        "claude" => Ok(AppType::Claude),
         "claude-desktop" => Ok(AppType::ClaudeDesktop),
         other => Err(AppError::InvalidInput(format!(
             "unsupported sync target '{other}'"
@@ -56,33 +56,86 @@ pub fn target_app(raw: &str) -> Result<AppType, AppError> {
     }
 }
 
-/// Sync a single OpenCode provider (by key) into `target`.
-pub fn sync_one(state: &AppState, key: &str, target: AppType) -> Result<SyncReport, AppError> {
-    let source = ProviderService::list(state, AppType::OpenCode)?
+/// Apps a card may copy itself into. Claude Code and Claude Desktop are the same gateway in
+/// two shapes, so they can be copied into each other; OpenCode feeds all of them.
+pub fn available_targets(source: AppType) -> &'static [AppType] {
+    match source {
+        AppType::OpenCode => &[
+            AppType::Dsh,
+            AppType::Codex,
+            AppType::Claude,
+            AppType::ClaudeDesktop,
+        ],
+        AppType::Claude => &[AppType::ClaudeDesktop],
+        AppType::ClaudeDesktop => &[AppType::Claude],
+        _ => &[],
+    }
+}
+
+fn ensure_target(source: AppType, target: AppType) -> Result<(), AppError> {
+    if available_targets(source).contains(&target) {
+        return Ok(());
+    }
+    Err(AppError::InvalidInput(format!(
+        "cannot copy {} providers into {}",
+        source.as_str(),
+        target.as_str()
+    )))
+}
+
+/// Sync a single provider (by key) into `target`.
+pub fn sync_one(
+    state: &AppState,
+    source_app: AppType,
+    key: &str,
+    target: AppType,
+) -> Result<SyncReport, AppError> {
+    ensure_target(source_app, target)?;
+    let source = ProviderService::list(state, source_app)?
         .get(key)
         .cloned()
-        .ok_or_else(|| AppError::InvalidInput(format!("OpenCode provider '{key}' not found")))?;
+        .ok_or_else(|| {
+            AppError::InvalidInput(format!(
+                "{} provider '{key}' not found",
+                source_app.as_str()
+            ))
+        })?;
     let mut report = SyncReport::default();
-    sync_provider(state, &source, target, &mut report)?;
+    sync_provider(state, source_app, &source, target, &mut report)?;
     Ok(report)
 }
 
-/// Sync every OpenCode provider that is actually in use into `target`.
+/// Sync every provider of `source_app` into `target`.
 ///
-/// Only rows present in OpenCode's live config are copied: the panel also lists providers that
-/// were never added there, and turning those into DSH/Codex cards would surprise the user.
-/// Conversion failures are reported per provider instead of aborting the run, so one
-/// Anthropic-only row cannot block the rest.
-pub fn sync_all(state: &AppState, target: AppType) -> Result<SyncReport, AppError> {
-    let added = crate::opencode_config::get_providers()?;
-    let sources: Vec<Provider> = ProviderService::list(state, AppType::OpenCode)?
-        .into_iter()
-        .filter(|(key, _)| added.contains_key(key))
-        .map(|(_, provider)| provider)
-        .collect();
+/// For OpenCode only rows present in its live config are copied: the panel also lists
+/// providers that were never added there, and turning those into cards elsewhere would
+/// surprise the user. Conversion failures are reported per provider instead of aborting the
+/// run, so one Anthropic-only row cannot block the rest.
+pub fn sync_all(
+    state: &AppState,
+    source_app: AppType,
+    target: AppType,
+) -> Result<SyncReport, AppError> {
+    ensure_target(source_app, target)?;
+    let sources: Vec<Provider> = match source_app {
+        AppType::OpenCode => {
+            let added = crate::opencode_config::get_providers()?;
+            ProviderService::list(state, AppType::OpenCode)?
+                .into_iter()
+                .filter(|(key, _)| added.contains_key(key))
+                .map(|(_, provider)| provider)
+                .collect()
+        }
+        _ => ProviderService::list(state, source_app)?
+            .into_values()
+            // The official card carries no gateway `env`; there is nothing to copy.
+            .filter(|provider| provider.settings_config.get("env").is_some())
+            .collect(),
+    };
+
     let mut report = SyncReport::default();
     for source in sources {
-        if let Err(error) = sync_provider(state, &source, target, &mut report) {
+        if let Err(error) = sync_provider(state, source_app, &source, target, &mut report) {
             report.skipped.push(SyncSkip {
                 id: source.id.clone(),
                 name: source.name.clone(),
@@ -95,15 +148,17 @@ pub fn sync_all(state: &AppState, target: AppType) -> Result<SyncReport, AppErro
 
 fn sync_provider(
     state: &AppState,
+    source_app: AppType,
     source: &Provider,
     target: AppType,
     report: &mut SyncReport,
 ) -> Result<(), AppError> {
     let mut one = SyncReport::default();
     let result = match target {
-        AppType::Dsh => sync_dsh(state, source, &mut one),
-        AppType::Codex => sync_codex(state, source, &mut one),
-        AppType::ClaudeDesktop => sync_desktop(state, source, &mut one),
+        AppType::Dsh => sync_dsh(state, source_app, source, &mut one),
+        AppType::Codex => sync_codex(state, source_app, source, &mut one),
+        AppType::ClaudeDesktop => sync_desktop(state, source_app, source, &mut one),
+        AppType::Claude => sync_claude(state, source_app, source, &mut one),
         _ => Err(AppError::InvalidInput(format!(
             "app '{}' is not a sync target",
             target.as_str()
@@ -191,6 +246,135 @@ impl SourceView {
             models,
         })
     }
+
+    /// The gateway/env shape Claude Code and Claude Desktop rows share.
+    fn from_env(source: &Provider, models: Vec<(String, Value)>) -> Result<Self, AppError> {
+        let base_url = env_text(source, "ANTHROPIC_BASE_URL")
+            .map(|url| url.trim_end_matches('/').to_string())
+            .ok_or_else(|| {
+                AppError::InvalidInput(format!(
+                    "provider '{}' has no ANTHROPIC_BASE_URL",
+                    source.name
+                ))
+            })?;
+        let api_key = env_text(source, "ANTHROPIC_AUTH_TOKEN")
+            .or_else(|| env_text(source, "ANTHROPIC_API_KEY"))
+            .ok_or_else(|| {
+                AppError::InvalidInput(format!(
+                    "provider '{}' has no ANTHROPIC_AUTH_TOKEN",
+                    source.name
+                ))
+            })?;
+        let format = source
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.api_format.as_deref());
+        let name = source.name.trim();
+        Ok(Self {
+            key: source.id.clone(),
+            name: if name.is_empty() {
+                source.id.clone()
+            } else {
+                name.to_string()
+            },
+            npm: npm_for_format(format).to_string(),
+            base_url,
+            api_key,
+            models,
+        })
+    }
+}
+
+/// Read a provider row of any supported source app into the shape the converters below use.
+fn source_view(app: AppType, source: &Provider) -> Result<SourceView, AppError> {
+    match app {
+        AppType::OpenCode => SourceView::of(source),
+        AppType::Claude => SourceView::from_env(
+            source,
+            claude_env_models(source)
+                .into_iter()
+                .map(|id| (id, Value::Null))
+                .collect(),
+        ),
+        AppType::ClaudeDesktop => SourceView::from_env(
+            source,
+            desktop_route_models(source)
+                .into_iter()
+                .map(|id| (id, Value::Null))
+                .collect(),
+        ),
+        other => Err(AppError::InvalidInput(format!(
+            "app '{}' is not a sync source",
+            other.as_str()
+        ))),
+    }
+}
+
+fn env_text(source: &Provider, key: &str) -> Option<String> {
+    source
+        .settings_config
+        .pointer("/env")
+        .and_then(|env| env.get(key))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+/// The SDK family a row speaks, expressed the way OpenCode's `npm` field spells it. Claude
+/// Code and Claude Desktop rows carry no `npm`, only the format the gateway expects.
+fn npm_for_format(format: Option<&str>) -> &'static str {
+    match format {
+        Some("openai_chat") => "@ai-sdk/openai-compatible",
+        Some("openai_responses") => "@ai-sdk/openai",
+        _ => "@ai-sdk/anthropic",
+    }
+}
+
+/// Claude Code's model aliases, in the order DSH/Codex should list them.
+fn claude_env_models(source: &Provider) -> Vec<String> {
+    const KEYS: [&str; 4] = [
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    ];
+    let mut seen: Vec<String> = Vec::new();
+    for key in KEYS {
+        if let Some(model) = env_text(source, key) {
+            if !seen.contains(&model) {
+                seen.push(model);
+            }
+        }
+    }
+    seen
+}
+
+/// Claude Desktop's route table flattened into model ids, keeping the role order.
+fn desktop_route_models(source: &Provider) -> Vec<String> {
+    let Some(routes) = source
+        .meta
+        .as_ref()
+        .map(|meta| &meta.claude_desktop_model_routes)
+    else {
+        return Vec::new();
+    };
+    let mut seen: Vec<String> = Vec::new();
+    for route in crate::claude_desktop_config::DEFAULT_PROXY_ROUTES {
+        if let Some(mapped) = routes.get(route.route_id) {
+            let model = mapped.model.trim();
+            if !model.is_empty() && !seen.iter().any(|item| item == model) {
+                seen.push(model.to_string());
+            }
+        }
+    }
+    for mapped in routes.values() {
+        let model = mapped.model.trim();
+        if !model.is_empty() && !seen.iter().any(|item| item == model) {
+            seen.push(model.to_string());
+        }
+    }
+    seen
 }
 
 /// DSH's `api` values, which mirror the SDK family the provider speaks.
@@ -377,8 +561,13 @@ fn toml_string(value: &str) -> String {
     escaped
 }
 
-fn sync_dsh(state: &AppState, source: &Provider, report: &mut SyncReport) -> Result<(), AppError> {
-    let view = SourceView::of(source)?;
+fn sync_dsh(
+    state: &AppState,
+    source_app: AppType,
+    source: &Provider,
+    report: &mut SyncReport,
+) -> Result<(), AppError> {
+    let view = source_view(source_app, source)?;
     let provider = dsh_provider(&view)?;
     let key = view.key.clone();
     let settings_config = provider.settings_config.clone();
@@ -410,10 +599,11 @@ fn sync_dsh(state: &AppState, source: &Provider, report: &mut SyncReport) -> Res
 
 fn sync_codex(
     state: &AppState,
+    source_app: AppType,
     source: &Provider,
     report: &mut SyncReport,
 ) -> Result<(), AppError> {
-    let view = SourceView::of(source)?;
+    let view = source_view(source_app, source)?;
     let existing = ProviderService::list(state, AppType::Codex)?
         .into_values()
         .find(|provider| provider.name.eq_ignore_ascii_case(&view.name));
@@ -502,10 +692,11 @@ fn desktop_provider(view: &SourceView) -> Result<Provider, AppError> {
 
 fn sync_desktop(
     state: &AppState,
+    source_app: AppType,
     source: &Provider,
     report: &mut SyncReport,
 ) -> Result<(), AppError> {
-    let view = SourceView::of(source)?;
+    let view = source_view(source_app, source)?;
     let existing = ProviderService::list(state, AppType::ClaudeDesktop)?
         .into_values()
         .find(|provider| provider.name.eq_ignore_ascii_case(&view.name));
@@ -521,6 +712,73 @@ fn sync_desktop(
         None => {
             let provider = desktop_provider(&view)?;
             ProviderService::add(state, AppType::ClaudeDesktop, provider, false)?;
+            report.created.push(view.name.clone());
+        }
+    }
+    Ok(())
+}
+
+/// Claude Code reads its gateway from the `env` block of `~/.claude/settings.json`. Its model
+/// aliases are role slots like Desktop's, so the source's models fill the default plus the
+/// haiku / sonnet / opus defaults in order, repeating when the source has fewer models.
+fn claude_provider(view: &SourceView) -> Result<Provider, AppError> {
+    let api_format = desktop_api_format(&view.npm).ok_or_else(|| {
+        AppError::InvalidInput(format!(
+            "Claude Code cannot route npm package '{}' of '{}'",
+            view.npm, view.name
+        ))
+    })?;
+    let models: Vec<String> = view.models.iter().map(|(id, _)| id.clone()).collect();
+
+    let mut env = Map::new();
+    env.insert("ANTHROPIC_BASE_URL".to_string(), json!(view.base_url));
+    env.insert("ANTHROPIC_AUTH_TOKEN".to_string(), json!(view.api_key));
+    if let Some(first) = models.first() {
+        env.insert("ANTHROPIC_MODEL".to_string(), json!(first));
+        if models.len() > 1 {
+            let alias = |offset: usize| models[offset % models.len()].clone();
+            env.insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), json!(alias(1)));
+            env.insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), json!(alias(2)));
+            env.insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), json!(alias(3)));
+        }
+    }
+
+    let mut provider = Provider::with_id(
+        uuid::Uuid::new_v4().to_string(),
+        view.name.clone(),
+        json!({ "env": Value::Object(env) }),
+        Some(view.base_url.clone()),
+    );
+    provider.meta = Some(ProviderMeta {
+        endpoint_auto_select: Some(true),
+        api_format: Some(api_format.to_string()),
+        ..Default::default()
+    });
+    Ok(provider)
+}
+
+fn sync_claude(
+    state: &AppState,
+    source_app: AppType,
+    source: &Provider,
+    report: &mut SyncReport,
+) -> Result<(), AppError> {
+    let view = source_view(source_app, source)?;
+    let existing = ProviderService::list(state, AppType::Claude)?
+        .into_values()
+        .find(|provider| provider.name.eq_ignore_ascii_case(&view.name));
+
+    match existing {
+        Some(current) => {
+            let id = current.id.clone();
+            let mut provider = claude_provider(&view)?;
+            provider.id = id.clone();
+            ProviderService::update(state, AppType::Claude, Some(&id), provider)?;
+            report.updated.push(view.name.clone());
+        }
+        None => {
+            let provider = claude_provider(&view)?;
+            ProviderService::add(state, AppType::Claude, provider, false)?;
             report.created.push(view.name.clone());
         }
     }
@@ -750,5 +1008,145 @@ mod tests {
     fn desktop_row_rejects_unknown_sdk_families() {
         let view = SourceView::of(&opencode_provider("@ai-sdk/google")).unwrap();
         assert!(desktop_provider(&view).is_err());
+    }
+
+    #[test]
+    fn claude_row_writes_the_gateway_env() {
+        let view = SourceView::of(&opencode_provider("@ai-sdk/anthropic")).unwrap();
+        let provider = claude_provider(&view).unwrap();
+        let env = &provider.settings_config["env"];
+
+        assert_eq!(env["ANTHROPIC_BASE_URL"], "https://api.example.com/v1");
+        assert_eq!(env["ANTHROPIC_AUTH_TOKEN"], "sk-test");
+        assert_eq!(env["ANTHROPIC_MODEL"], "model-a");
+        // One model cannot fill the role aliases; leaving them out keeps Claude Code's own
+        // defaults instead of inventing entries.
+        assert!(env.get("ANTHROPIC_DEFAULT_OPUS_MODEL").is_none());
+        assert_eq!(
+            provider.meta.expect("meta").api_format.as_deref(),
+            Some("anthropic")
+        );
+    }
+
+    #[test]
+    fn claude_row_spreads_models_across_the_role_aliases() {
+        let mut source = opencode_provider("@ai-sdk/openai");
+        source.settings_config["models"] = json!({ "a": {}, "b": {}, "c": {}, "d": {} });
+        let view = SourceView::of(&source).unwrap();
+        let provider = claude_provider(&view).unwrap();
+        let env = &provider.settings_config["env"];
+
+        assert_eq!(env["ANTHROPIC_MODEL"], "a");
+        let mut aliases: Vec<&str> = [
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        ]
+        .iter()
+        .filter_map(|key| env.get(*key).and_then(Value::as_str))
+        .collect();
+        aliases.sort_unstable();
+        assert_eq!(aliases, vec!["b", "c", "d"]);
+    }
+
+    #[test]
+    fn claude_row_rejects_unknown_sdk_families() {
+        let view = SourceView::of(&opencode_provider("@ai-sdk/google")).unwrap();
+        assert!(claude_provider(&view).is_err());
+    }
+
+    fn claude_row() -> Provider {
+        Provider::with_id(
+            "claude-relay".to_string(),
+            "Claude Relay".to_string(),
+            json!({
+                "env": {
+                    "ANTHROPIC_BASE_URL": "https://claude.example.com/",
+                    "ANTHROPIC_AUTH_TOKEN": "sk-claude",
+                    "ANTHROPIC_MODEL": "claude-sonnet-5",
+                    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5"
+                }
+            }),
+            None,
+        )
+    }
+
+    fn desktop_row() -> Provider {
+        let mut provider = Provider::with_id(
+            "desktop-relay".to_string(),
+            "Desktop Relay".to_string(),
+            json!({
+                "env": {
+                    "ANTHROPIC_BASE_URL": "https://desktop.example.com",
+                    "ANTHROPIC_AUTH_TOKEN": "sk-desktop"
+                }
+            }),
+            None,
+        );
+        provider.meta = Some(ProviderMeta {
+            claude_desktop_mode: Some(crate::provider::ClaudeDesktopMode::Proxy),
+            claude_desktop_model_routes: [(
+                "claude-sonnet-5".to_string(),
+                crate::provider::ClaudeDesktopModelRoute {
+                    model: "gpt-5.6-sol".to_string(),
+                    label_override: Some("Sol".to_string()),
+                    supports_1m: Some(true),
+                },
+            )]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        });
+        provider
+    }
+
+    #[test]
+    fn claude_row_feeds_the_desktop_route_table() {
+        let view = source_view(AppType::Claude, &claude_row()).unwrap();
+        assert_eq!(view.npm, "@ai-sdk/anthropic");
+        assert_eq!(view.base_url, "https://claude.example.com");
+        assert_eq!(view.api_key, "sk-claude");
+        assert_eq!(view.models.len(), 2);
+
+        let provider = desktop_provider(&view).unwrap();
+        assert_eq!(
+            provider.settings_config["env"]["ANTHROPIC_BASE_URL"],
+            json!("https://claude.example.com")
+        );
+        let routes = &provider
+            .meta
+            .as_ref()
+            .expect("desktop rows always carry meta")
+            .claude_desktop_model_routes;
+        assert_eq!(routes["claude-sonnet-5"].model, "claude-sonnet-5");
+        assert_eq!(routes["claude-opus-5"].model, "claude-opus-5");
+    }
+
+    #[test]
+    fn desktop_row_feeds_the_claude_aliases() {
+        let view = source_view(AppType::ClaudeDesktop, &desktop_row()).unwrap();
+        assert_eq!(view.npm, "@ai-sdk/anthropic");
+        assert_eq!(view.base_url, "https://desktop.example.com");
+        assert_eq!(view.models.len(), 1);
+        assert_eq!(view.models[0].0, "gpt-5.6-sol");
+
+        let provider = claude_provider(&view).unwrap();
+        assert_eq!(
+            provider.settings_config["env"]["ANTHROPIC_MODEL"],
+            json!("gpt-5.6-sol")
+        );
+        assert_eq!(
+            provider.settings_config["env"]["ANTHROPIC_AUTH_TOKEN"],
+            json!("sk-desktop")
+        );
+    }
+
+    #[test]
+    fn sync_pairs_stay_inside_the_shipped_matrix() {
+        assert!(ensure_target(AppType::OpenCode, AppType::Claude).is_ok());
+        assert!(ensure_target(AppType::Claude, AppType::ClaudeDesktop).is_ok());
+        assert!(ensure_target(AppType::ClaudeDesktop, AppType::Claude).is_ok());
+        assert!(ensure_target(AppType::Claude, AppType::Dsh).is_err());
+        assert!(ensure_target(AppType::Codex, AppType::Claude).is_err());
     }
 }

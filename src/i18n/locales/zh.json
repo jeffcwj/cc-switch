@@ -104,6 +104,8 @@
     "syncTo": "同步到",
     "syncToDsh": "DeepSeek Harness",
     "syncToCodex": "Codex",
+    "syncToClaude": "Claude Code",
+    "syncAllToClaude": "全部同步到 Claude Code",
     "syncToClaudeDesktop": "Claude Desktop",
     "syncAllHint": "把 OpenCode 里已添加的供应商复制过去：",
     "syncAllToDsh": "全部同步到 DSH",

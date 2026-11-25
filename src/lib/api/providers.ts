@@ -260,22 +260,26 @@ export const providersApi = {
   },
 
   /**
-   * 把一家 OpenCode 供应商同步到 DSH 或 Codex 的供应商列表。
-   * 以「供应商标识」为键：已有就更新，没有就新建。
+   * 把一家供应商复制到另一个应用的供应商列表。
+   * OpenCode 以「供应商标识」为键：已有就更新，没有就新建；其余应用按名字匹配。
    */
-  async syncOpenCodeProvider(
+  async syncProviderToApp(
+    app: AppId,
     providerId: string,
     target: SyncTargetApp,
   ): Promise<SyncReport> {
-    return await invoke("sync_opencode_provider", { providerId, target });
+    return await invoke("sync_provider_to_app", { app, providerId, target });
   },
 
   /**
-   * 把全部 OpenCode 供应商同步到 DSH 或 Codex。
+   * 把某个应用里的全部供应商复制到另一个应用。
    * 目标应用装不下的（例如 Codex 无法直连 Anthropic）会出现在 skipped 里。
    */
-  async syncAllOpenCodeProviders(target: SyncTargetApp): Promise<SyncReport> {
-    return await invoke("sync_all_opencode_providers", { target });
+  async syncAllProvidersToApp(
+    app: AppId,
+    target: SyncTargetApp,
+  ): Promise<SyncReport> {
+    return await invoke("sync_all_providers_to_app", { app, target });
   },
 
   /**
